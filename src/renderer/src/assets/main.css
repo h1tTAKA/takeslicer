@@ -93,3 +93,21 @@ body {
 .region-row__del {
   padding: 6px 10px;
 }
+
+/* 검증 경고 */
+.region-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.region-row--invalid input {
+  border-color: #e5484d;
+}
+
+.region-row__error {
+  margin: 0;
+  padding-left: 2px;
+  font-size: 12px;
+  color: #e5484d;
+}
