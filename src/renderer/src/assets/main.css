@@ -372,6 +372,63 @@ body {
   color: #6988e6;
 }
 
+.render-panel__run {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.render-panel__folder {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--ev-button-alt-border);
+  color: var(--ev-button-alt-text);
+  background-color: var(--ev-button-alt-bg);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.render-panel__folder:hover {
+  background-color: var(--ev-button-alt-hover-bg);
+}
+
+.render-panel__path {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ev-c-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.render-panel__go {
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background-color: #6988e6;
+}
+
+.render-panel__go:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.render-panel__result {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ev-c-text-1);
+}
+
 .take-list {
   list-style: none;
   margin: 0;

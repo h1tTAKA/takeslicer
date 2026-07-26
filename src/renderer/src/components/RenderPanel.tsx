@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { IconFolder } from '@tabler/icons-react'
 import { Region, TakeFile, RenderConfig } from '../types'
 import { detectRegion } from '../audio/detect'
+import { renderAll } from '../render/renderAll'
 
 interface Props {
   regions: Region[]
@@ -13,6 +15,36 @@ interface Props {
 // 미리보기는 detect를 stride로 근사(빠름) + 150ms 디바운스(슬라이더 튈 때마다 재계산 방지).
 function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.JSX.Element {
   const set = (patch: Partial<RenderConfig>): void => onConfigChange({ ...config, ...patch })
+
+  const [outDir, setOutDir] = useState<string | null>(null)
+  const [rendering, setRendering] = useState<{ done: number; total: number } | null>(null)
+  const [result, setResult] = useState<string | null>(null)
+
+  const pickFolder = async (): Promise<void> => {
+    const dir = await window.api.pickDirectory()
+    if (dir) setOutDir(dir)
+  }
+
+  const doRender = async (): Promise<void> => {
+    if (!outDir) return
+    setResult(null)
+    setRendering({ done: 0, total: takes.length })
+    try {
+      const summary = await renderAll(outDir, regions, takes, config, (done, total) =>
+        setRendering({ done, total })
+      )
+      setResult(
+        summary.written > 0
+          ? `${summary.written}개 저장됨 (${summary.regions}개 구간)`
+          : '뽑을 게 없습니다 (구간·트랙·임계값 확인)'
+      )
+      if (summary.written > 0) await window.api.openPath(outDir)
+    } catch (e) {
+      setResult(`오류: ${(e as Error).message}`)
+    } finally {
+      setRendering(null)
+    }
+  }
 
   // 슬라이더는 즉시 반응(config), 무거운 미리보기 계산은 살짝 늦춰(debounced).
   const [debCfg, setDebCfg] = useState(config)
@@ -85,6 +117,24 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
           ))}
         </div>
       )}
+
+      <div className="render-panel__run">
+        <button className="render-panel__folder" onClick={pickFolder}>
+          <IconFolder size={16} stroke={2} />
+          출력 폴더
+        </button>
+        <span className="render-panel__path" title={outDir ?? ''}>
+          {outDir ?? '폴더를 선택하세요'}
+        </span>
+        <button
+          className="render-panel__go"
+          onClick={doRender}
+          disabled={!outDir || takes.length === 0 || rendering !== null}
+        >
+          {rendering ? `렌더 중… ${rendering.done}/${rendering.total}` : '렌더 시작'}
+        </button>
+      </div>
+      {result && <p className="render-panel__result">{result}</p>}
     </div>
   )
 }
