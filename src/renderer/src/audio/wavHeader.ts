@@ -31,6 +31,8 @@ export function parseWavHeader(buf: ArrayBuffer): WavHeaderInfo {
     const size = view.getUint32(offset + 4, true) // little-endian
     const data = offset + 8
     if (tag === 'fmt ') {
+      // sampleRate(uint32 @ data+4)까지 읽으려면 data+8 바이트 필요 — 잘린 파일은 곱게 에러 처리.
+      if (data + 8 > view.byteLength) throw new Error('WAV fmt 청크가 잘렸습니다')
       const numChannels = view.getUint16(data + 2, true)
       const sampleRate = view.getUint32(data + 4, true)
       return { numChannels, sampleRate }

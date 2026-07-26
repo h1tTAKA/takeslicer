@@ -37,7 +37,8 @@ function App(): React.JSX.Element {
       try {
         const take = await decodeWavFile(wavs[i])
         seen.add(nameKey)
-        setTakes((ts) => [...ts, take]) // 하나 끝날 때마다 즉시 목록에 추가
+        // 넣는 순간 최신 목록과 한 번 더 대조 — 동시 업로드로 같은 이름이 겹쳐 들어오는 것 차단.
+        setTakes((ts) => (ts.some((t) => t.name === take.name) ? ts : [...ts, take]))
       } catch (e) {
         errs.push(`${wavs[i].name}: ${(e as Error).message}`)
       }
