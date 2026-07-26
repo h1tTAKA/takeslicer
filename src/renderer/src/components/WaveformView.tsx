@@ -5,6 +5,8 @@ import { secToMMSS } from '../utils/time'
 import TrackWaveform from './TrackWaveform'
 
 const GUTTER = 110 // 트랙명 거터 폭(px)
+const ROW_GAP = 8 // 라벨-플롯 사이 간격(css .waveform__row gap)
+const PLOT_LEFT = GUTTER + ROW_GAP // 파형 실제 시작 x (재생헤드·눈금·클릭 기준)
 
 // 시간 눈금 간격: 화면에 ~12개 이하로 떨어지게 고른다.
 function niceStep(dur: number): number {
@@ -16,10 +18,12 @@ interface Props {
   regions: Region[]
   takes: TakeFile[]
   instTake: TakeFile | null
+  currentTime: number
+  onSeek: (sec: number) => void
 }
 
 // 트랙들을 공유 시간축으로 스택하는 컨테이너. 모든 트랙이 같은 pxPerSec을 써야 경계선이 일직선으로 맞는다.
-function WaveformView({ regions, takes, instTake }: Props): React.JSX.Element {
+function WaveformView({ regions, takes, instTake, currentTime, onSeek }: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [rowH, setRowH] = useState(40) // 세로(트랙 높이) px — 파형 크게/작게 보기
@@ -35,7 +39,7 @@ function WaveformView({ regions, takes, instTake }: Props): React.JSX.Element {
 
   // 공유 시간축 길이 = 실제 오디오(가장 긴 트랙) 기준. 폭에 딱 맞춤.
   // 구간이 오디오보다 길면 경계선은 화면 밖으로 잘림(=오디오 범위 밖 신호) — 파형은 항상 꽉 차게 유지.
-  const plotWidth = Math.max(0, width - GUTTER)
+  const plotWidth = Math.max(0, width - PLOT_LEFT)
   // 인스트 포함 가장 긴 길이(인스트 = 노래 전체 길이 레퍼런스).
   const durations = [...takes.map((t) => t.duration), ...(instTake ? [instTake.duration] : [])]
   const trackMax = durations.length > 0 ? Math.max(...durations) : 0
@@ -61,7 +65,8 @@ function WaveformView({ regions, takes, instTake }: Props): React.JSX.Element {
     <div className="waveform" ref={ref}>
       <div className="waveform__header">
         <h2>파형 검증</h2>
-        {takes.length > 0 && (
+        {instTake && <span className="waveform__time">{secToMMSS(currentTime)}</span>}
+        {(takes.length > 0 || instTake) && (
           <label className="waveform__zoom">
             <IconZoom size={16} stroke={2} />
             <input
@@ -81,7 +86,7 @@ function WaveformView({ regions, takes, instTake }: Props): React.JSX.Element {
         <>
           {pxPerSec > 0 && (
             <div className="waveform__rulers">
-              <div className="waveform__regionbar" style={{ marginLeft: GUTTER, width: plotWidth }}>
+              <div className="waveform__regionbar" style={{ marginLeft: PLOT_LEFT, width: plotWidth }}>
                 {regions
                   .filter((r) => Number.isFinite(r.start) && Number.isFinite(r.end))
                   .map((r) => (
@@ -98,7 +103,7 @@ function WaveformView({ regions, takes, instTake }: Props): React.JSX.Element {
                     </div>
                   ))}
               </div>
-              <div className="waveform__ticks" style={{ marginLeft: GUTTER, width: plotWidth }}>
+              <div className="waveform__ticks" style={{ marginLeft: PLOT_LEFT, width: plotWidth }}>
                 {ticks.map((t) => (
                   <span key={t} style={{ left: t * pxPerSec }}>
                     {secToMMSS(t)}
@@ -107,7 +112,20 @@ function WaveformView({ regions, takes, instTake }: Props): React.JSX.Element {
               </div>
             </div>
           )}
-          <div className="waveform__rows">
+          <div
+            className="waveform__rows"
+            onClick={(e) => {
+              const el = e.currentTarget
+              const x = e.clientX - el.getBoundingClientRect().left - PLOT_LEFT + el.scrollLeft
+              if (x >= 0 && pxPerSec > 0) onSeek(x / pxPerSec)
+            }}
+          >
+            {instTake && pxPerSec > 0 && (
+              <div
+                className="waveform__playhead"
+                style={{ left: PLOT_LEFT + currentTime * pxPerSec }}
+              />
+            )}
             {instTake && (
               <div className="waveform__row waveform__row--inst">
                 <span className="waveform__label" title={instTake.name}>

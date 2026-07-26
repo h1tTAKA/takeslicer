@@ -1,5 +1,13 @@
 import { useState, DragEvent, ChangeEvent } from 'react'
-import { IconTrash, IconFileMusic, IconFolder, IconMusic } from '@tabler/icons-react'
+import {
+  IconTrash,
+  IconFileMusic,
+  IconFolder,
+  IconMusic,
+  IconPlayerPlayFilled,
+  IconPlayerPauseFilled,
+  IconPlayerStopFilled
+} from '@tabler/icons-react'
 import { TakeFile } from '../types'
 import { secToMMSS } from '../utils/time'
 
@@ -12,6 +20,9 @@ interface Props {
   instTake: TakeFile | null
   onInstFiles: (files: File[]) => void
   onInstRemove: () => void
+  instPlaying: boolean
+  onInstToggle: () => void
+  onInstStop: () => void
 }
 
 // 세 가지 입구(파일 선택 / 폴더 선택 / 드래그드롭)로 File들을 모아 App에 넘기고, 로드된 트랙 목록을 보여준다.
@@ -23,7 +34,10 @@ function TakeUpload({
   progress,
   instTake,
   onInstFiles,
-  onInstRemove
+  onInstRemove,
+  instPlaying,
+  onInstToggle,
+  onInstStop
 }: Props): React.JSX.Element {
   const [dragOver, setDragOver] = useState(false)
 
@@ -75,6 +89,16 @@ function TakeUpload({
 
       {instTake && (
         <div className="take-upload__inst">
+          <button className="take-upload__play" onClick={onInstToggle} aria-label="재생/일시정지">
+            {instPlaying ? (
+              <IconPlayerPauseFilled size={16} />
+            ) : (
+              <IconPlayerPlayFilled size={16} />
+            )}
+          </button>
+          <button className="take-upload__stop" onClick={onInstStop} aria-label="정지(맨 처음으로)">
+            <IconPlayerStopFilled size={14} />
+          </button>
           <span className="take-upload__inst-tag">INST</span>
           <span className="take-row__name">{instTake.name}</span>
           <span className="take-row__meta">{secToMMSS(instTake.duration)}</span>
