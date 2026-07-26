@@ -24,9 +24,19 @@ function App(): React.JSX.Element {
     }
     setProgress({ done: 0, total: wavs.length })
     const errs: string[] = []
+    // 이미 로드된 트랙 이름 모음 — 같은 파일 재업로드 시 스킵(디코드 낭비도 막음).
+    const seen = new Set(takes.map((t) => t.name))
+    let skipped = 0
     for (let i = 0; i < wavs.length; i++) {
+      const nameKey = wavs[i].name.replace(/\.[^.]+$/, '') // take.name과 같은 규칙(확장자 제거)
+      if (seen.has(nameKey)) {
+        skipped++
+        setProgress({ done: i + 1, total: wavs.length })
+        continue
+      }
       try {
         const take = await decodeWavFile(wavs[i])
+        seen.add(nameKey)
         setTakes((ts) => [...ts, take]) // 하나 끝날 때마다 즉시 목록에 추가
       } catch (e) {
         errs.push(`${wavs[i].name}: ${(e as Error).message}`)
@@ -34,6 +44,7 @@ function App(): React.JSX.Element {
       setProgress({ done: i + 1, total: wavs.length })
     }
     setProgress(null)
+    if (skipped > 0) errs.unshift(`${skipped}개는 이미 로드되어 건너뜀`)
     if (errs.length > 0) setLoadError(errs.join(' / '))
   }
 
