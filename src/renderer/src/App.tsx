@@ -2,7 +2,8 @@ import { useState } from 'react'
 import RegionForm from './components/RegionForm'
 import TakeUpload from './components/TakeUpload'
 import WaveformView from './components/WaveformView'
-import { Region, TakeFile } from './types'
+import RenderPanel from './components/RenderPanel'
+import { Region, TakeFile, RenderConfig } from './types'
 import { decodeWavFile, isWavFile } from './audio/decode'
 
 function App(): React.JSX.Element {
@@ -12,6 +13,8 @@ function App(): React.JSX.Element {
   const [takes, setTakes] = useState<TakeFile[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  // 렌더 설정(캘리브레이션 노브). 다음 렌더 이슈에서 실제 파일 생성에 사용.
+  const [config, setConfig] = useState<RenderConfig>({ rmsThreshold: 0.02, minActiveMs: 120, tailSec: 2 })
 
   // 고른/떨군 파일들을 디코드해 목록에 추가.
   // 순차 처리 + 하나 끝날 때마다 즉시 추가 — 폴더처럼 많아도 진행이 화면에 바로 보이게.
@@ -82,6 +85,7 @@ function App(): React.JSX.Element {
         progress={progress}
       />
       <WaveformView regions={regions} takes={takes} />
+      <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>
   )
 }

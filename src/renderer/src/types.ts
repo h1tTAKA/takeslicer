@@ -6,6 +6,23 @@ export interface Region {
   end: number // 끝 시각(초)
 }
 
+// 렌더 설정(캘리브레이션 노브). masterplan §5.2
+export interface RenderConfig {
+  rmsThreshold: number // 선형 진폭 임계값(0~1). 이하면 무음 취급
+  minActiveMs: number // 이 길이 이상 소리나야 "있음"(숨소리 튐 방지)
+  tailSec: number // 파형 끝 뒤 꼬리 여유 + 경계 확장 판정 gap(초)
+}
+
+// 슬라이스 1개 결과(파일 쓰기 전). 0초부터 렌더된 채널 샘플.
+export interface SliceResult {
+  regionName: string
+  takeName: string
+  filename: string // 구간이름NN원본.wav
+  channelData: Float32Array[] // 채널별 샘플(길이 = 0~renderEnd)
+  sampleRate: number
+  length: number // 총 샘플 수
+}
+
 // 업로드한 녹음 트랙 1개(디코드 완료 상태).
 export interface TakeFile {
   id: string // 고유 식별 — 리스트 key + 삭제용
