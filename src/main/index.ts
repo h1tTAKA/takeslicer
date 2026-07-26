@@ -19,10 +19,15 @@ interface RenderFile {
 
 // 렌더 IPC 핸들러 등록.
 function registerRenderIpc(): void {
+  // 유저가 실제로 고른 폴더만 기억 → open-path는 이 중에서만 허용(임의 경로 열기 방지).
+  const pickedDirs = new Set<string>()
+
   // 출력 폴더 선택(네이티브 다이얼로그)
   ipcMain.handle('pick-directory', async () => {
     const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
-    return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0]
+    if (r.canceled || r.filePaths.length === 0) return null
+    pickedDirs.add(resolve(r.filePaths[0]))
+    return r.filePaths[0]
   })
 
   // wav 파일들을 구간별 폴더에 저장. 경로 traversal 방어.
@@ -58,8 +63,9 @@ function registerRenderIpc(): void {
     return r.filePath
   })
 
-  // 저장 후 폴더 열기
+  // 저장 후 폴더 열기 — 유저가 고른 폴더만 허용(임의 경로 열기 차단).
   ipcMain.handle('open-path', async (_e, p: string) => {
+    if (!pickedDirs.has(resolve(p))) throw new Error('허용되지 않은 경로')
     await shell.openPath(p)
   })
 }

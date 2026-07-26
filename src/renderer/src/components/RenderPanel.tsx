@@ -29,7 +29,11 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
   const doRender = async (): Promise<void> => {
     if (!zip && !outDir) return
     setResult(null)
-    setRendering({ done: 0, total: takes.length })
+    // renderAll이 처리하는 실제 총 개수(유효 구간 × 트랙)로 진행바 초기화.
+    const validCount = regions.filter(
+      (r) => Number.isFinite(r.start) && Number.isFinite(r.end) && r.end > r.start && r.name.trim()
+    ).length
+    setRendering({ done: 0, total: validCount * takes.length })
     try {
       const summary = await renderAll(outDir, regions, takes, config, zip, (done, total) =>
         setRendering({ done, total })

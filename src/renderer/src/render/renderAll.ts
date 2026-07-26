@@ -49,12 +49,11 @@ export async function renderAll(
       done++
       onProgress?.(done, total)
     }
-    if (!jszip && files.length > 0 && outDir) {
+    if (!jszip && outDir && files.length > 0) {
       const res = await window.api.renderFiles(outDir, files)
       written += res.written
-    } else {
-      written += files.length // (jszip일 땐 아래에서 total 계산)
     }
+    // zip 모드는 아래에서 총 개수를 다시 계산.
   }
 
   if (jszip) {
