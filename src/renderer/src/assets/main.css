@@ -235,6 +235,42 @@ body {
   font-size: 14px;
 }
 
+/* 구간 이름 바 + 시간 눈금 */
+.waveform__regionbar {
+  position: relative;
+  height: 20px;
+}
+
+.waveform__region {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  box-sizing: border-box;
+  border-left: 1px solid rgba(233, 150, 60, 0.85);
+  padding-left: 4px;
+  font-size: 11px;
+  line-height: 20px;
+  color: #e8963c;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.waveform__ticks {
+  position: relative;
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.waveform__ticks span {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+  color: var(--ev-c-text-2);
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-1px);
+}
+
 .waveform__rows {
   display: flex;
   flex-direction: column;
