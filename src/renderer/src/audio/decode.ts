@@ -5,6 +5,14 @@ function stripExt(name: string): string {
   return name.replace(/\.[^.]+$/, '')
 }
 
+// 확장자/타입으로 wav만 골라낸다(폴더 선택 시 섞인 비-wav 걸러내기).
+// macOS AppleDouble(`._원본이름`)만 제외 — 원본 파일마다 자동 생성되는 숨김 짝꿍이라 반드시 진짜 원본이 따로 있다.
+// (`._` 패턴만 좁게 제외 → 엔지니어가 지은 정상 파일은 절대 안 걸림)
+export function isWavFile(file: File): boolean {
+  if (file.name.startsWith('._')) return false
+  return /\.wav$/i.test(file.name) || file.type === 'audio/wav' || file.type === 'audio/x-wav'
+}
+
 // File → TakeFile. 원본 샘플레이트로 디코드해 리샘플링을 피한다.
 export async function decodeWavFile(file: File): Promise<TakeFile> {
   const buf = await file.arrayBuffer() // 파일 원시 바이트
