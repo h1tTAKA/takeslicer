@@ -313,6 +313,65 @@ body {
   display: block;
 }
 
+/* 렌더 설정 */
+.render-panel {
+  margin-top: 32px;
+}
+
+.render-panel h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.render-panel__knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 520px;
+}
+
+.render-panel__knobs label {
+  display: grid;
+  grid-template-columns: 110px 1fr 64px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ev-c-text-2);
+}
+
+.render-panel__val {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ev-c-text-1);
+}
+
+.render-panel__preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.render-panel__preview-title {
+  font-size: 13px;
+  color: var(--ev-c-text-2);
+  margin-right: 4px;
+}
+
+.render-panel__chip {
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid var(--ev-c-gray-1);
+  border-radius: 999px;
+  color: var(--ev-c-text-2);
+}
+
+.render-panel__chip b {
+  color: #6988e6;
+}
+
 .take-list {
   list-style: none;
   margin: 0;

@@ -7,11 +7,13 @@ export interface RegionDetection {
   lastActive: number // 마지막 활성 샘플 인덱스(절대). 없으면 -1
 }
 
+// stride: 샘플 건너뛰기(기본 1=정밀). 미리보기는 stride를 키워 빠르게 근사(정확도↓, 속도↑).
 export function detectRegion(
   buffer: AudioBuffer,
   startSec: number,
   endSec: number,
-  cfg: { rmsThreshold: number; minActiveMs: number }
+  cfg: { rmsThreshold: number; minActiveMs: number },
+  stride = 1
 ): RegionDetection {
   const sr = buffer.sampleRate
   const start = Math.max(0, Math.floor(startSec * sr))
@@ -24,7 +26,7 @@ export function detectRegion(
   const thr = cfg.rmsThreshold
   let activeCount = 0
   let lastActive = -1
-  for (let i = start; i < end; i++) {
+  for (let i = start; i < end; i += stride) {
     let peak = 0
     for (let c = 0; c < chans.length; c++) {
       const a = Math.abs(chans[c][i])
@@ -35,7 +37,7 @@ export function detectRegion(
       lastActive = i
     }
   }
-  const activeMs = (activeCount / sr) * 1000
+  const activeMs = ((activeCount * stride) / sr) * 1000 // stride 반영해 실제 길이 환산
   return { active: activeMs >= cfg.minActiveMs, lastActive }
 }
 
