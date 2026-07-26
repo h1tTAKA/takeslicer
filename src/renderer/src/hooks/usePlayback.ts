@@ -109,7 +109,15 @@ export function usePlayback(): Playback {
     setIsPlaying(false)
   }, [])
 
-  useEffect(() => () => stopSource(), []) // 언마운트 시 정리
+  // 언마운트 시 정리: 소스 정지 + AudioContext 닫기(리소스 누수 방지).
+  useEffect(
+    () => () => {
+      stopSource()
+      void ctxRef.current?.close()
+      ctxRef.current = null
+    },
+    []
+  )
 
   return { isPlaying, currentTime, toggle, seek, stop }
 }
