@@ -5,9 +5,7 @@ body {
 }
 
 .app {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 32px 24px;
+  padding: 28px 40px;
 }
 
 .app h1 {
@@ -205,6 +203,114 @@ body {
   height: 100%;
   background-color: #6988e6;
   transition: width 120ms ease;
+}
+
+/* 파형 검증 (스택 타임라인) */
+.waveform {
+  margin-top: 32px;
+}
+
+.waveform__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.waveform h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.waveform__zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ev-c-text-2);
+}
+
+.waveform__empty {
+  color: var(--ev-c-text-2);
+  font-size: 14px;
+}
+
+/* 구간 이름 바 + 시간 눈금 */
+.waveform__regionbar {
+  position: relative;
+  height: 20px;
+}
+
+.waveform__region {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  box-sizing: border-box;
+  border-left: 1px solid rgba(233, 150, 60, 0.85);
+  padding-left: 4px;
+  font-size: 11px;
+  line-height: 20px;
+  color: #e8963c;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.waveform__ticks {
+  position: relative;
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.waveform__ticks span {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+  color: var(--ev-c-text-2);
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-1px);
+}
+
+.waveform__rows {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* 행이 내용(라벨+파형)만큼 커지게 → 가로 스크롤 */
+  gap: 2px;
+  max-height: 480px;
+  overflow: auto; /* 가로(확대)·세로(트랙 많음) 스크롤 */
+}
+
+.waveform__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+}
+
+.waveform__label {
+  position: sticky; /* 가로 스크롤해도 트랙명은 왼쪽에 고정 */
+  left: 0;
+  z-index: 1;
+  width: 110px;
+  flex-shrink: 0;
+  padding-right: 4px;
+  background-color: var(--color-background);
+  font-size: 12px;
+  color: var(--ev-c-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waveform__plot {
+  position: relative;
+  background-color: var(--color-background-mute);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.waveform__plot canvas {
+  display: block;
 }
 
 .take-list {

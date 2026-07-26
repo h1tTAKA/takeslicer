@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import RegionForm from './components/RegionForm'
 import TakeUpload from './components/TakeUpload'
+import WaveformView from './components/WaveformView'
 import { Region, TakeFile } from './types'
 import { decodeWavFile, isWavFile } from './audio/decode'
 
@@ -80,6 +81,7 @@ function App(): React.JSX.Element {
         error={loadError}
         progress={progress}
       />
+      <WaveformView regions={regions} takes={takes} />
     </div>
   )
 }
