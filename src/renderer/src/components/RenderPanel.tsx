@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { IconFolder } from '@tabler/icons-react'
 import { Region, TakeFile, RenderConfig } from '../types'
 import { detectRegion } from '../audio/detect'
+import { renderAll } from '../render/renderAll'
 
 interface Props {
   regions: Region[]
@@ -13,6 +15,47 @@ interface Props {
 // 미리보기는 detect를 stride로 근사(빠름) + 150ms 디바운스(슬라이더 튈 때마다 재계산 방지).
 function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.JSX.Element {
   const set = (patch: Partial<RenderConfig>): void => onConfigChange({ ...config, ...patch })
+
+  const [outDir, setOutDir] = useState<string | null>(null)
+  const [zip, setZip] = useState(false)
+  const [rendering, setRendering] = useState<{ done: number; total: number } | null>(null)
+  const [result, setResult] = useState<string | null>(null)
+
+  const pickFolder = async (): Promise<void> => {
+    const dir = await window.api.pickDirectory()
+    if (dir) setOutDir(dir)
+  }
+
+  const doRender = async (): Promise<void> => {
+    if (!zip && !outDir) return
+    setResult(null)
+    // renderAll이 처리하는 실제 총 개수(유효 구간 × 트랙)로 진행바 초기화.
+    const validCount = regions.filter(
+      (r) => Number.isFinite(r.start) && Number.isFinite(r.end) && r.end > r.start && r.name.trim()
+    ).length
+    setRendering({ done: 0, total: validCount * takes.length })
+    try {
+      const summary = await renderAll(outDir, regions, takes, config, zip, (done, total) =>
+        setRendering({ done, total })
+      )
+      if (summary.written === 0) {
+        setResult(
+          zip && summary.zipPath === null
+            ? '저장 취소됨'
+            : '뽑을 게 없습니다 (구간·트랙·임계값 확인)'
+        )
+      } else if (zip) {
+        setResult(`${summary.written}개 → ${summary.zipPath}`)
+      } else {
+        setResult(`${summary.written}개 저장됨 (${summary.regions}개 구간)`)
+        if (outDir) await window.api.openPath(outDir)
+      }
+    } catch (e) {
+      setResult(`오류: ${(e as Error).message}`)
+    } finally {
+      setRendering(null)
+    }
+  }
 
   // 슬라이더는 즉시 반응(config), 무거운 미리보기 계산은 살짝 늦춰(debounced).
   const [debCfg, setDebCfg] = useState(config)
@@ -85,6 +128,28 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
           ))}
         </div>
       )}
+
+      <div className="render-panel__run">
+        <button className="render-panel__folder" onClick={pickFolder} disabled={zip}>
+          <IconFolder size={16} stroke={2} />
+          출력 폴더
+        </button>
+        <span className="render-panel__path" title={outDir ?? ''}>
+          {zip ? 'zip으로 저장' : (outDir ?? '폴더를 선택하세요')}
+        </span>
+        <label className="render-panel__zip">
+          <input type="checkbox" checked={zip} onChange={(e) => setZip(e.target.checked)} />
+          zip
+        </label>
+        <button
+          className="render-panel__go"
+          onClick={doRender}
+          disabled={(!zip && !outDir) || takes.length === 0 || rendering !== null}
+        >
+          {rendering ? `렌더 중… ${rendering.done}/${rendering.total}` : '렌더 시작'}
+        </button>
+      </div>
+      {result && <p className="render-panel__result">{result}</p>}
     </div>
   )
 }
