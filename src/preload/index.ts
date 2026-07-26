@@ -12,6 +12,7 @@ const api = {
   pickDirectory: (): Promise<string | null> => ipcRenderer.invoke('pick-directory'),
   renderFiles: (outDir: string, files: RenderFile[]): Promise<{ written: number }> =>
     ipcRenderer.invoke('render-files', { outDir, files }),
+  saveZip: (bytes: Uint8Array): Promise<string | null> => ipcRenderer.invoke('save-zip', bytes),
   openPath: (p: string): Promise<void> => ipcRenderer.invoke('open-path', p)
 }
 

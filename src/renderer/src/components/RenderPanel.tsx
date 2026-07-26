@@ -17,6 +17,7 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
   const set = (patch: Partial<RenderConfig>): void => onConfigChange({ ...config, ...patch })
 
   const [outDir, setOutDir] = useState<string | null>(null)
+  const [zip, setZip] = useState(false)
   const [rendering, setRendering] = useState<{ done: number; total: number } | null>(null)
   const [result, setResult] = useState<string | null>(null)
 
@@ -26,19 +27,25 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
   }
 
   const doRender = async (): Promise<void> => {
-    if (!outDir) return
+    if (!zip && !outDir) return
     setResult(null)
     setRendering({ done: 0, total: takes.length })
     try {
-      const summary = await renderAll(outDir, regions, takes, config, (done, total) =>
+      const summary = await renderAll(outDir, regions, takes, config, zip, (done, total) =>
         setRendering({ done, total })
       )
-      setResult(
-        summary.written > 0
-          ? `${summary.written}개 저장됨 (${summary.regions}개 구간)`
-          : '뽑을 게 없습니다 (구간·트랙·임계값 확인)'
-      )
-      if (summary.written > 0) await window.api.openPath(outDir)
+      if (summary.written === 0) {
+        setResult(
+          zip && summary.zipPath === null
+            ? '저장 취소됨'
+            : '뽑을 게 없습니다 (구간·트랙·임계값 확인)'
+        )
+      } else if (zip) {
+        setResult(`${summary.written}개 → ${summary.zipPath}`)
+      } else {
+        setResult(`${summary.written}개 저장됨 (${summary.regions}개 구간)`)
+        if (outDir) await window.api.openPath(outDir)
+      }
     } catch (e) {
       setResult(`오류: ${(e as Error).message}`)
     } finally {
@@ -119,17 +126,21 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
       )}
 
       <div className="render-panel__run">
-        <button className="render-panel__folder" onClick={pickFolder}>
+        <button className="render-panel__folder" onClick={pickFolder} disabled={zip}>
           <IconFolder size={16} stroke={2} />
           출력 폴더
         </button>
         <span className="render-panel__path" title={outDir ?? ''}>
-          {outDir ?? '폴더를 선택하세요'}
+          {zip ? 'zip으로 저장' : (outDir ?? '폴더를 선택하세요')}
         </span>
+        <label className="render-panel__zip">
+          <input type="checkbox" checked={zip} onChange={(e) => setZip(e.target.checked)} />
+          zip
+        </label>
         <button
           className="render-panel__go"
           onClick={doRender}
-          disabled={!outDir || takes.length === 0 || rendering !== null}
+          disabled={(!zip && !outDir) || takes.length === 0 || rendering !== null}
         >
           {rendering ? `렌더 중… ${rendering.done}/${rendering.total}` : '렌더 시작'}
         </button>

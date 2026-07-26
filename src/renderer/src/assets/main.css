@@ -423,10 +423,25 @@ body {
   cursor: not-allowed;
 }
 
+.render-panel__zip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ev-c-text-2);
+  cursor: pointer;
+}
+
+.render-panel__folder:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .render-panel__result {
   margin-top: 12px;
   font-size: 13px;
   color: var(--ev-c-text-1);
+  word-break: break-all;
 }
 
 .take-list {

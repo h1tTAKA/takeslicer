@@ -47,6 +47,17 @@ function registerRenderIpc(): void {
     }
   )
 
+  // zip 저장(저장 다이얼로그)
+  ipcMain.handle('save-zip', async (_e, bytes: Uint8Array): Promise<string | null> => {
+    const r = await dialog.showSaveDialog({
+      defaultPath: 'takeslicer.zip',
+      filters: [{ name: 'Zip', extensions: ['zip'] }]
+    })
+    if (r.canceled || !r.filePath) return null
+    await writeFile(r.filePath, Buffer.from(bytes))
+    return r.filePath
+  })
+
   // 저장 후 폴더 열기
   ipcMain.handle('open-path', async (_e, p: string) => {
     await shell.openPath(p)
