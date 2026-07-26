@@ -1,7 +1,57 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { join, resolve, sep } from 'path'
+import { mkdir, writeFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+
+// 파일/폴더명 금지문자 치환 (renderer에서도 하지만 방어적으로 main에서도).
+const BAD = /[/\\:*?"<>|]/g
+const clean = (s: string): string => {
+  const c = s.replace(BAD, '_').trim()
+  return c.length > 0 ? c : 'untitled'
+}
+
+interface RenderFile {
+  dir: string // 구간 폴더명
+  name: string // 파일명
+  bytes: Uint8Array // wav 바이트
+}
+
+// 렌더 IPC 핸들러 등록.
+function registerRenderIpc(): void {
+  // 출력 폴더 선택(네이티브 다이얼로그)
+  ipcMain.handle('pick-directory', async () => {
+    const r = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+    return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0]
+  })
+
+  // wav 파일들을 구간별 폴더에 저장. 경로 traversal 방어.
+  ipcMain.handle(
+    'render-files',
+    async (_e, payload: { outDir: string; files: RenderFile[] }): Promise<{ written: number }> => {
+      const root = resolve(payload.outDir)
+      const made = new Set<string>()
+      let written = 0
+      for (const f of payload.files) {
+        const dir = join(root, clean(f.dir))
+        const full = join(dir, clean(f.name))
+        if (full !== root && !full.startsWith(root + sep)) throw new Error(`잘못된 경로: ${full}`)
+        if (!made.has(dir)) {
+          await mkdir(dir, { recursive: true })
+          made.add(dir)
+        }
+        await writeFile(full, Buffer.from(f.bytes))
+        written++
+      }
+      return { written }
+    }
+  )
+
+  // 저장 후 폴더 열기
+  ipcMain.handle('open-path', async (_e, p: string) => {
+    await shell.openPath(p)
+  })
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -49,8 +99,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  registerRenderIpc()
 
   createWindow()
 
