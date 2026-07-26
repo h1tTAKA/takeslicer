@@ -49,7 +49,7 @@ function TrackWaveform({ buffer, width, height, boundaries, color = '#6988e6' }:
     // 구간 경계선(파형 위에 관통). 이 트랙 폭 안에 드는 경계만.
     ctx.fillStyle = 'rgba(233,150,60,0.85)'
     for (const bx of boundaries) {
-      if (bx >= 0 && bx <= cols) ctx.fillRect(Math.round(bx), 0, 1, height)
+      if (bx >= 0 && bx < cols) ctx.fillRect(Math.round(bx), 0, 1, height)
     }
   }, [peaks, cols, height, color, boundaries])
 
