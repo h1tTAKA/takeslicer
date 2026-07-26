@@ -230,6 +230,14 @@ body {
   color: var(--ev-c-text-2);
 }
 
+.waveform__time {
+  margin-left: auto;
+  margin-right: 12px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #e5484d;
+}
+
 .waveform__empty {
   color: var(--ev-c-text-2);
   font-size: 14px;
@@ -272,12 +280,85 @@ body {
 }
 
 .waveform__rows {
+  position: relative; /* 재생헤드 오버레이 기준 */
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* 행이 내용(라벨+파형)만큼 커지게 → 가로 스크롤 */
+  align-items: flex-start; /* 행이 내용(라벨+파형)만큼 커지게 */
   gap: 2px;
-  max-height: 480px;
-  overflow: auto; /* 가로(확대)·세로(트랙 많음) 스크롤 */
+  cursor: pointer; /* 클릭 seek */
+  /* 모든 트랙 파형을 다 보이게(캡 없이) — 페이지 스크롤로 */
+}
+
+.waveform__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #e5484d;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.waveform__row--inst .waveform__label {
+  color: #4a9d6a;
+  font-weight: 700;
+}
+
+.waveform__row--inst .waveform__plot {
+  outline: 1px solid rgba(74, 157, 106, 0.4);
+}
+
+.take-upload__inst {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgba(74, 157, 106, 0.5);
+  border-radius: 6px;
+}
+
+.take-upload__inst-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4a9d6a;
+  padding: 2px 6px;
+  border: 1px solid rgba(74, 157, 106, 0.5);
+  border-radius: 4px;
+}
+
+.take-upload__play {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  background-color: #4a9d6a;
+}
+
+.take-upload__play:hover {
+  filter: brightness(1.1);
+}
+
+.take-upload__stop {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ev-button-alt-border);
+  border-radius: 50%;
+  color: var(--ev-c-text-2);
+  background-color: var(--ev-button-alt-bg);
+}
+
+.take-upload__stop:hover {
+  background-color: var(--ev-button-alt-hover-bg);
 }
 
 .waveform__row {
