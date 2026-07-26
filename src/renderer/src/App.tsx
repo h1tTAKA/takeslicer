@@ -15,6 +15,19 @@ function App(): React.JSX.Element {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   // 렌더 설정(캘리브레이션 노브). 다음 렌더 이슈에서 실제 파일 생성에 사용.
   const [config, setConfig] = useState<RenderConfig>({ rmsThreshold: 0.02, minActiveMs: 120, tailSec: 2 })
+  // 인스트(반주) 레퍼런스 트랙 — takes(슬라이스 대상)와 분리. 재생·구간 잡기용.
+  const [instTake, setInstTake] = useState<TakeFile | null>(null)
+
+  const addInst = async (files: File[]): Promise<void> => {
+    const wav = files.filter(isWavFile)[0]
+    if (!wav) return
+    try {
+      setInstTake(await decodeWavFile(wav))
+    } catch (e) {
+      setLoadError(`인스트: ${(e as Error).message}`)
+    }
+  }
+  const removeInst = (): void => setInstTake(null)
 
   // 고른/떨군 파일들을 디코드해 목록에 추가.
   // 순차 처리 + 하나 끝날 때마다 즉시 추가 — 폴더처럼 많아도 진행이 화면에 바로 보이게.
@@ -83,8 +96,11 @@ function App(): React.JSX.Element {
         onRemove={removeTake}
         error={loadError}
         progress={progress}
+        instTake={instTake}
+        onInstFiles={addInst}
+        onInstRemove={removeInst}
       />
-      <WaveformView regions={regions} takes={takes} />
+      <WaveformView regions={regions} takes={takes} instTake={instTake} />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>
   )
