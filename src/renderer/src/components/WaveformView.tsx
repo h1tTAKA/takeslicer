@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  IconZoom,
+  IconArrowsHorizontal,
+  IconArrowsVertical,
   IconTrash,
   IconPlayerPlayFilled,
   IconPlayerPauseFilled,
@@ -62,6 +63,7 @@ function WaveformView({
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [rowH, setRowH] = useState(40) // 세로(트랙 높이) px — 파형 크게/작게 보기
+  const [zoomX, setZoomX] = useState(1) // 가로(시간) 배율 — 1=폭에 맞춤, >1=확대+가로스크롤
   const [createRange, setCreateRange] = useState<{ s: number; e: number } | null>(null) // 생성 드래그 프리뷰
 
   // 드래그 상태 + 최신 값(스케일/콜백)을 ref로 → window 리스너가 stale closure 안 겪게.
@@ -228,7 +230,8 @@ function WaveformView({
   const validEnds = regions.map((r) => r.end).filter((v) => Number.isFinite(v))
   // 트랙/인스트 있으면 그 길이 기준, 없으면(파형 없음) 구간 끝 기준.
   const maxDuration = trackMax > 0 ? trackMax : Math.max(...validEnds, 1)
-  const pxPerSec = plotWidth > 0 ? plotWidth / maxDuration : 0
+  const pxPerSec = plotWidth > 0 ? (plotWidth / maxDuration) * zoomX : 0
+  const timelineWidth = maxDuration * pxPerSec // 가로 확대 시 실제 타임라인 폭
   const bound = songLength > 0 ? songLength : maxDuration // 드래그 상한 = 노래 길이(없으면 타임라인)
   liveRef.current = { pxPerSec, bound, onRegionUpdate, onRegionCreate, setCreateRange } // 드래그 리스너가 읽을 최신 값
 
@@ -264,28 +267,41 @@ function WaveformView({
         <h2>파형 검증</h2>
         {instTake && <span className="waveform__time">{secToMMSS(currentTime)}</span>}
         {(takes.length > 0 || instTake) && (
-          <label className="waveform__zoom">
-            <IconZoom size={16} stroke={2} />
-            <input
-              type="range"
-              min={24}
-              max={320}
-              step={4}
-              value={rowH}
-              onChange={(e) => setRowH(Number(e.target.value))}
-            />
-          </label>
+          <div className="waveform__zoom">
+            <label className="waveform__zoom-ctl" title="가로 확대">
+              <IconArrowsHorizontal size={16} stroke={2} />
+              <input
+                type="range"
+                min={1}
+                max={40}
+                step={0.5}
+                value={zoomX}
+                onChange={(e) => setZoomX(Number(e.target.value))}
+              />
+            </label>
+            <label className="waveform__zoom-ctl" title="세로 확대">
+              <IconArrowsVertical size={16} stroke={2} />
+              <input
+                type="range"
+                min={24}
+                max={320}
+                step={4}
+                value={rowH}
+                onChange={(e) => setRowH(Number(e.target.value))}
+              />
+            </label>
+          </div>
         )}
       </div>
       {takes.length === 0 && !instTake ? (
         <p className="waveform__empty">트랙을 업로드하면 파형이 여기 표시됩니다.</p>
       ) : (
-        <>
+        <div className="waveform__scroll">
           {pxPerSec > 0 && (
             <div className="waveform__rulers">
               <div
                 className="waveform__regionbar"
-                style={{ marginLeft: PLOT_LEFT, width: plotWidth }}
+                style={{ marginLeft: PLOT_LEFT, width: timelineWidth }}
                 onMouseDown={beginCreate}
               >
                 {createRange && (
@@ -329,7 +345,7 @@ function WaveformView({
                   )
                 })}
               </div>
-              <div className="waveform__ticks" style={{ marginLeft: PLOT_LEFT, width: plotWidth }}>
+              <div className="waveform__ticks" style={{ marginLeft: PLOT_LEFT, width: timelineWidth }}>
                 {ticks.map((t) => (
                   <span key={t} style={{ left: t * pxPerSec }}>
                     {secToMMSS(t)}
@@ -419,7 +435,7 @@ function WaveformView({
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   )

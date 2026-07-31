@@ -230,8 +230,18 @@ body {
 .waveform__zoom {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+.waveform__zoom-ctl {
+  display: flex;
+  align-items: center;
   gap: 6px;
   color: var(--ev-c-text-2);
+}
+
+.waveform__scroll {
+  overflow-x: auto; /* 가로 확대 시 스크롤 */
 }
 
 .waveform__time {
@@ -414,6 +424,7 @@ body {
   position: sticky;
   left: 0;
   z-index: 3;
+  align-self: stretch; /* 행 전체 높이 채워 스크롤된 파형을 완전히 가림 */
   width: 190px;
   flex-shrink: 0;
   display: flex;
@@ -421,6 +432,7 @@ body {
   justify-content: center;
   gap: 2px;
   padding-right: 8px;
+  border-right: 1px solid var(--ev-c-gray-1);
   background-color: var(--color-background);
   overflow: hidden;
 }
