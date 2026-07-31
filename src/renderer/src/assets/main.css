@@ -247,6 +247,16 @@ body {
 .waveform__regionbar {
   position: relative;
   height: 22px;
+  cursor: crosshair; /* 빈 곳 드래그로 구간 생성 */
+}
+
+.waveform__region-preview {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background-color: rgba(233, 150, 60, 0.25);
+  border: 1px dashed rgba(233, 150, 60, 0.9);
+  pointer-events: none;
 }
 
 .waveform__region {

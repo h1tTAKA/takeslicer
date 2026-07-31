@@ -86,6 +86,10 @@ function App(): React.JSX.Element {
 
   const removeRegion = (id: string): void => setRegions((rs) => rs.filter((r) => r.id !== id))
 
+  // 빈 타임라인 드래그로 새 구간 생성(이름은 폼에서 입력).
+  const addRegionAt = (start: number, end: number): void =>
+    setRegions((rs) => [...rs, { id: crypto.randomUUID(), name: '', start, end }])
+
   return (
     <div className="app">
       <h1>takeslicer</h1>
@@ -115,6 +119,7 @@ function App(): React.JSX.Element {
         currentTime={pb.currentTime}
         onSeek={(sec) => pb.seek(sec, instTake?.audioBuffer)}
         onRegionUpdate={updateRegion}
+        onRegionCreate={addRegionAt}
       />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>

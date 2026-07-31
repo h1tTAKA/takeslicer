@@ -21,6 +21,7 @@ interface Props {
   currentTime: number
   onSeek: (sec: number) => void
   onRegionUpdate: (id: string, patch: Partial<Region>) => void
+  onRegionCreate: (start: number, end: number) => void
 }
 
 type DragMode = 'start' | 'end' | 'move'
@@ -33,16 +34,30 @@ function WaveformView({
   instTake,
   currentTime,
   onSeek,
-  onRegionUpdate
+  onRegionUpdate,
+  onRegionCreate
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [rowH, setRowH] = useState(40) // 세로(트랙 높이) px — 파형 크게/작게 보기
+  const [createRange, setCreateRange] = useState<{ s: number; e: number } | null>(null) // 생성 드래그 프리뷰
 
   // 드래그 상태 + 최신 값(스케일/콜백)을 ref로 → window 리스너가 stale closure 안 겪게.
   const dragRef = useRef<{ mode: DragMode; id: string; x0: number; s0: number; e0: number } | null>(null)
-  const liveRef = useRef({ pxPerSec: 0, maxDuration: 1, onRegionUpdate })
-  const handlersRef = useRef<{ move: (e: MouseEvent) => void; up: () => void } | null>(null)
+  const createRef = useRef<{ rectLeft: number; startTime: number; s: number; e: number } | null>(null)
+  const liveRef = useRef({
+    pxPerSec: 0,
+    maxDuration: 1,
+    onRegionUpdate,
+    onRegionCreate,
+    setCreateRange
+  })
+  const handlersRef = useRef<{
+    move: (e: MouseEvent) => void
+    up: () => void
+    cMove: (e: MouseEvent) => void
+    cUp: () => void
+  } | null>(null)
   if (!handlersRef.current) {
     const move = (e: MouseEvent): void => {
       const d = dragRef.current
@@ -64,7 +79,26 @@ function WaveformView({
       window.removeEventListener('mousemove', move)
       window.removeEventListener('mouseup', up)
     }
-    handlersRef.current = { move, up }
+    // 빈 곳 드래그 → 새 구간 프리뷰
+    const cMove = (e: MouseEvent): void => {
+      const c = createRef.current
+      const { pxPerSec, maxDuration, setCreateRange: setRange } = liveRef.current
+      if (!c || pxPerSec <= 0) return
+      const t = Math.max(0, Math.min((e.clientX - c.rectLeft) / pxPerSec, maxDuration))
+      c.s = Math.min(c.startTime, t)
+      c.e = Math.max(c.startTime, t)
+      setRange({ s: c.s, e: c.e })
+    }
+    const cUp = (): void => {
+      const c = createRef.current
+      const { onRegionCreate: create, setCreateRange: setRange } = liveRef.current
+      window.removeEventListener('mousemove', cMove)
+      window.removeEventListener('mouseup', cUp)
+      setRange(null)
+      if (c && c.e - c.s >= MIN_LEN) create(c.s, c.e)
+      createRef.current = null
+    }
+    handlersRef.current = { move, up, cMove, cUp }
   }
 
   const beginDrag = (e: React.MouseEvent, r: Region, mode: DragMode): void => {
@@ -73,6 +107,16 @@ function WaveformView({
     dragRef.current = { mode, id: r.id, x0: e.clientX, s0: r.start, e0: r.end }
     window.addEventListener('mousemove', handlersRef.current!.move)
     window.addEventListener('mouseup', handlersRef.current!.up)
+  }
+
+  // 구간 바 빈 곳 mousedown → 생성 드래그(블록은 stopPropagation이라 여기 안 옴).
+  const beginCreate = (e: React.MouseEvent): void => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const t = pxPerSec > 0 ? Math.max(0, Math.min((e.clientX - rect.left) / pxPerSec, maxDuration)) : 0
+    createRef.current = { rectLeft: rect.left, startTime: t, s: t, e: t }
+    setCreateRange({ s: t, e: t })
+    window.addEventListener('mousemove', handlersRef.current!.cMove)
+    window.addEventListener('mouseup', handlersRef.current!.cUp)
   }
 
   // 컨테이너 실제 폭 측정(캔버스는 픽셀 폭 필요). 창 크기 바뀌면 갱신.
@@ -94,7 +138,7 @@ function WaveformView({
   // 트랙/인스트 있으면 그 길이 기준, 없으면(파형 없음) 구간 끝 기준.
   const maxDuration = trackMax > 0 ? trackMax : Math.max(...validEnds, 1)
   const pxPerSec = plotWidth > 0 ? plotWidth / maxDuration : 0
-  liveRef.current = { pxPerSec, maxDuration, onRegionUpdate } // 드래그 리스너가 읽을 최신 값
+  liveRef.current = { pxPerSec, maxDuration, onRegionUpdate, onRegionCreate, setCreateRange } // 드래그 리스너가 읽을 최신 값
 
   useEffect(() => {
     const h = handlersRef.current
@@ -102,6 +146,8 @@ function WaveformView({
       if (h) {
         window.removeEventListener('mousemove', h.move)
         window.removeEventListener('mouseup', h.up)
+        window.removeEventListener('mousemove', h.cMove)
+        window.removeEventListener('mouseup', h.cUp)
       }
     }
   }, [])
@@ -144,7 +190,20 @@ function WaveformView({
         <>
           {pxPerSec > 0 && (
             <div className="waveform__rulers">
-              <div className="waveform__regionbar" style={{ marginLeft: PLOT_LEFT, width: plotWidth }}>
+              <div
+                className="waveform__regionbar"
+                style={{ marginLeft: PLOT_LEFT, width: plotWidth }}
+                onMouseDown={beginCreate}
+              >
+                {createRange && (
+                  <div
+                    className="waveform__region-preview"
+                    style={{
+                      left: createRange.s * pxPerSec,
+                      width: Math.max(1, (createRange.e - createRange.s) * pxPerSec)
+                    }}
+                  />
+                )}
                 {regions
                   .filter((r) => Number.isFinite(r.start) && Number.isFinite(r.end))
                   .map((r) => (
