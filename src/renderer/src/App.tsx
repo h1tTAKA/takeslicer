@@ -98,6 +98,8 @@ function App(): React.JSX.Element {
         onAdd={addRegion}
         onUpdate={updateRegion}
         onRemove={removeRegion}
+        canEdit={instTake !== null}
+        songLength={instTake?.duration ?? 0}
       />
       <TakeUpload
         takes={takes}
@@ -120,6 +122,7 @@ function App(): React.JSX.Element {
         onSeek={(sec) => pb.seek(sec, instTake?.audioBuffer)}
         onRegionUpdate={updateRegion}
         onRegionCreate={addRegionAt}
+        songLength={instTake?.duration ?? 0}
       />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>

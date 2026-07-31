@@ -22,6 +22,7 @@ interface Props {
   onSeek: (sec: number) => void
   onRegionUpdate: (id: string, patch: Partial<Region>) => void
   onRegionCreate: (start: number, end: number) => void
+  songLength: number // 노래 길이(인스트) — 드래그 상한
 }
 
 type DragMode = 'start' | 'end' | 'move'
@@ -35,7 +36,8 @@ function WaveformView({
   currentTime,
   onSeek,
   onRegionUpdate,
-  onRegionCreate
+  onRegionCreate,
+  songLength
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
@@ -47,7 +49,7 @@ function WaveformView({
   const createRef = useRef<{ rectLeft: number; startTime: number; s: number; e: number } | null>(null)
   const liveRef = useRef({
     pxPerSec: 0,
-    maxDuration: 1,
+    bound: 1, // 드래그 상한(노래 길이)
     onRegionUpdate,
     onRegionCreate,
     setCreateRange
@@ -61,16 +63,16 @@ function WaveformView({
   if (!handlersRef.current) {
     const move = (e: MouseEvent): void => {
       const d = dragRef.current
-      const { pxPerSec, maxDuration, onRegionUpdate: update } = liveRef.current
+      const { pxPerSec, bound, onRegionUpdate: update } = liveRef.current
       if (!d || pxPerSec <= 0) return
       const dt = (e.clientX - d.x0) / pxPerSec
       if (d.mode === 'start') {
         update(d.id, { start: Math.max(0, Math.min(d.s0 + dt, d.e0 - MIN_LEN)) })
       } else if (d.mode === 'end') {
-        update(d.id, { end: Math.max(d.s0 + MIN_LEN, Math.min(d.e0 + dt, maxDuration)) })
+        update(d.id, { end: Math.max(d.s0 + MIN_LEN, Math.min(d.e0 + dt, bound)) })
       } else {
         const len = d.e0 - d.s0
-        const start = Math.max(0, Math.min(d.s0 + dt, maxDuration - len))
+        const start = Math.max(0, Math.min(d.s0 + dt, bound - len))
         update(d.id, { start, end: start + len })
       }
     }
@@ -82,9 +84,9 @@ function WaveformView({
     // 빈 곳 드래그 → 새 구간 프리뷰
     const cMove = (e: MouseEvent): void => {
       const c = createRef.current
-      const { pxPerSec, maxDuration, setCreateRange: setRange } = liveRef.current
+      const { pxPerSec, bound, setCreateRange: setRange } = liveRef.current
       if (!c || pxPerSec <= 0) return
-      const t = Math.max(0, Math.min((e.clientX - c.rectLeft) / pxPerSec, maxDuration))
+      const t = Math.max(0, Math.min((e.clientX - c.rectLeft) / pxPerSec, bound))
       c.s = Math.min(c.startTime, t)
       c.e = Math.max(c.startTime, t)
       setRange({ s: c.s, e: c.e })
@@ -112,7 +114,7 @@ function WaveformView({
   // 구간 바 빈 곳 mousedown → 생성 드래그(블록은 stopPropagation이라 여기 안 옴).
   const beginCreate = (e: React.MouseEvent): void => {
     const rect = e.currentTarget.getBoundingClientRect()
-    const t = pxPerSec > 0 ? Math.max(0, Math.min((e.clientX - rect.left) / pxPerSec, maxDuration)) : 0
+    const t = pxPerSec > 0 ? Math.max(0, Math.min((e.clientX - rect.left) / pxPerSec, bound)) : 0
     createRef.current = { rectLeft: rect.left, startTime: t, s: t, e: t }
     setCreateRange({ s: t, e: t })
     window.addEventListener('mousemove', handlersRef.current!.cMove)
@@ -138,7 +140,8 @@ function WaveformView({
   // 트랙/인스트 있으면 그 길이 기준, 없으면(파형 없음) 구간 끝 기준.
   const maxDuration = trackMax > 0 ? trackMax : Math.max(...validEnds, 1)
   const pxPerSec = plotWidth > 0 ? plotWidth / maxDuration : 0
-  liveRef.current = { pxPerSec, maxDuration, onRegionUpdate, onRegionCreate, setCreateRange } // 드래그 리스너가 읽을 최신 값
+  const bound = songLength > 0 ? songLength : maxDuration // 드래그 상한 = 노래 길이(없으면 타임라인)
+  liveRef.current = { pxPerSec, bound, onRegionUpdate, onRegionCreate, setCreateRange } // 드래그 리스너가 읽을 최신 값
 
   useEffect(() => {
     const h = handlersRef.current
