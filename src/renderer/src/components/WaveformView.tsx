@@ -20,13 +20,60 @@ interface Props {
   instTake: TakeFile | null
   currentTime: number
   onSeek: (sec: number) => void
+  onRegionUpdate: (id: string, patch: Partial<Region>) => void
 }
 
+type DragMode = 'start' | 'end' | 'move'
+const MIN_LEN = 0.05 // 구간 최소 폭(초)
+
 // 트랙들을 공유 시간축으로 스택하는 컨테이너. 모든 트랙이 같은 pxPerSec을 써야 경계선이 일직선으로 맞는다.
-function WaveformView({ regions, takes, instTake, currentTime, onSeek }: Props): React.JSX.Element {
+function WaveformView({
+  regions,
+  takes,
+  instTake,
+  currentTime,
+  onSeek,
+  onRegionUpdate
+}: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [rowH, setRowH] = useState(40) // 세로(트랙 높이) px — 파형 크게/작게 보기
+
+  // 드래그 상태 + 최신 값(스케일/콜백)을 ref로 → window 리스너가 stale closure 안 겪게.
+  const dragRef = useRef<{ mode: DragMode; id: string; x0: number; s0: number; e0: number } | null>(null)
+  const liveRef = useRef({ pxPerSec: 0, maxDuration: 1, onRegionUpdate })
+  const handlersRef = useRef<{ move: (e: MouseEvent) => void; up: () => void } | null>(null)
+  if (!handlersRef.current) {
+    const move = (e: MouseEvent): void => {
+      const d = dragRef.current
+      const { pxPerSec, maxDuration, onRegionUpdate: update } = liveRef.current
+      if (!d || pxPerSec <= 0) return
+      const dt = (e.clientX - d.x0) / pxPerSec
+      if (d.mode === 'start') {
+        update(d.id, { start: Math.max(0, Math.min(d.s0 + dt, d.e0 - MIN_LEN)) })
+      } else if (d.mode === 'end') {
+        update(d.id, { end: Math.max(d.s0 + MIN_LEN, Math.min(d.e0 + dt, maxDuration)) })
+      } else {
+        const len = d.e0 - d.s0
+        const start = Math.max(0, Math.min(d.s0 + dt, maxDuration - len))
+        update(d.id, { start, end: start + len })
+      }
+    }
+    const up = (): void => {
+      dragRef.current = null
+      window.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', up)
+    }
+    handlersRef.current = { move, up }
+  }
+
+  const beginDrag = (e: React.MouseEvent, r: Region, mode: DragMode): void => {
+    e.stopPropagation() // 파형 seek/다른 핸들과 분리
+    e.preventDefault()
+    dragRef.current = { mode, id: r.id, x0: e.clientX, s0: r.start, e0: r.end }
+    window.addEventListener('mousemove', handlersRef.current!.move)
+    window.addEventListener('mouseup', handlersRef.current!.up)
+  }
 
   // 컨테이너 실제 폭 측정(캔버스는 픽셀 폭 필요). 창 크기 바뀌면 갱신.
   useEffect(() => {
@@ -47,6 +94,17 @@ function WaveformView({ regions, takes, instTake, currentTime, onSeek }: Props):
   // 트랙/인스트 있으면 그 길이 기준, 없으면(파형 없음) 구간 끝 기준.
   const maxDuration = trackMax > 0 ? trackMax : Math.max(...validEnds, 1)
   const pxPerSec = plotWidth > 0 ? plotWidth / maxDuration : 0
+  liveRef.current = { pxPerSec, maxDuration, onRegionUpdate } // 드래그 리스너가 읽을 최신 값
+
+  useEffect(() => {
+    const h = handlersRef.current
+    return () => {
+      if (h) {
+        window.removeEventListener('mousemove', h.move)
+        window.removeEventListener('mouseup', h.up)
+      }
+    }
+  }, [])
 
   // 구간 경계 x위치(px) — 각 트랙 캔버스에 넘겨 수직선으로. 유효한 값만.
   const boundaries = useMemo(
@@ -97,9 +155,18 @@ function WaveformView({ regions, takes, instTake, currentTime, onSeek }: Props):
                         left: r.start * pxPerSec,
                         width: Math.max(2, (r.end - r.start) * pxPerSec)
                       }}
-                      title={r.name}
+                      title={`${r.name} (드래그로 조절)`}
+                      onMouseDown={(e) => beginDrag(e, r, 'move')}
                     >
-                      {r.name}
+                      <span
+                        className="waveform__region-handle waveform__region-handle--l"
+                        onMouseDown={(e) => beginDrag(e, r, 'start')}
+                      />
+                      <span className="waveform__region-name">{r.name}</span>
+                      <span
+                        className="waveform__region-handle waveform__region-handle--r"
+                        onMouseDown={(e) => beginDrag(e, r, 'end')}
+                      />
                     </div>
                   ))}
               </div>

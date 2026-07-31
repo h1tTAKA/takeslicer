@@ -114,6 +114,7 @@ function App(): React.JSX.Element {
         instTake={instTake}
         currentTime={pb.currentTime}
         onSeek={(sec) => pb.seek(sec, instTake?.audioBuffer)}
+        onRegionUpdate={updateRegion}
       />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>

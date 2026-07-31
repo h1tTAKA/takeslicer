@@ -246,7 +246,7 @@ body {
 /* 구간 이름 바 + 시간 눈금 */
 .waveform__regionbar {
   position: relative;
-  height: 20px;
+  height: 22px;
 }
 
 .waveform__region {
@@ -255,13 +255,40 @@ body {
   height: 100%;
   box-sizing: border-box;
   border-left: 1px solid rgba(233, 150, 60, 0.85);
-  padding-left: 4px;
+  background-color: rgba(233, 150, 60, 0.08);
   font-size: 11px;
-  line-height: 20px;
+  line-height: 22px;
   color: #e8963c;
   overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
+  cursor: grab; /* 블록 이동 */
+}
+
+.waveform__region:active {
+  cursor: grabbing;
+}
+
+.waveform__region-name {
+  padding-left: 8px;
+  pointer-events: none;
+}
+
+.waveform__region-handle {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 100%;
+  cursor: ew-resize; /* 좌우 리사이즈 */
+}
+
+.waveform__region-handle--l {
+  left: 0;
+  border-left: 2px solid rgba(233, 150, 60, 0.9);
+}
+
+.waveform__region-handle--r {
+  right: 0;
+  border-right: 2px solid rgba(233, 150, 60, 0.9);
 }
 
 .waveform__ticks {
