@@ -93,6 +93,7 @@ function App(): React.JSX.Element {
   return (
     <div className="app">
       <h1>takeslicer</h1>
+      <TakeUpload onFiles={addTakes} onInstFiles={addInst} error={loadError} progress={progress} />
       <RegionForm
         regions={regions}
         onAdd={addRegion}
@@ -101,7 +102,6 @@ function App(): React.JSX.Element {
         canEdit={instTake !== null}
         songLength={instTake?.duration ?? 0}
       />
-      <TakeUpload onFiles={addTakes} onInstFiles={addInst} error={loadError} progress={progress} />
       <WaveformView
         regions={regions}
         takes={takes}

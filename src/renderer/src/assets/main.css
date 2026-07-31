@@ -8,6 +8,10 @@ body {
   padding: 28px 40px;
 }
 
+.app > * + * {
+  margin-top: 36px;
+}
+
 .app h1 {
   font-size: 24px;
   font-weight: 700;
