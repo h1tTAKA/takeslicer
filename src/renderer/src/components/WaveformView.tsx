@@ -28,6 +28,10 @@ interface Props {
 type DragMode = 'start' | 'end' | 'move'
 const MIN_LEN = 0.05 // 구간 최소 폭(초)
 
+// 구간별 색상 팔레트(눈에 딱딱 구분되게). 인덱스로 순환.
+const PALETTE = ['#e8963c', '#6988e6', '#4a9d6a', '#c0569e', '#d4b13a', '#5aacc0', '#d5654a', '#8a6fd4']
+const colorFor = (i: number): string => PALETTE[((i % PALETTE.length) + PALETTE.length) % PALETTE.length]
+
 // 트랙들을 공유 시간축으로 스택하는 컨테이너. 모든 트랙이 같은 pxPerSec을 써야 경계선이 일직선으로 맞는다.
 function WaveformView({
   regions,
@@ -45,7 +49,20 @@ function WaveformView({
   const [createRange, setCreateRange] = useState<{ s: number; e: number } | null>(null) // 생성 드래그 프리뷰
 
   // 드래그 상태 + 최신 값(스케일/콜백)을 ref로 → window 리스너가 stale closure 안 겪게.
-  const dragRef = useRef<{ mode: DragMode; id: string; x0: number; s0: number; e0: number } | null>(null)
+  const dragRef = useRef<{
+    mode: DragMode
+    id: string
+    x0: number
+    s0: number
+    e0: number
+    link: { id: string; key: 'start' | 'end' } | null // start/end 드래그 시 연결할 이웃
+    lo: number // 경계 하한
+    hi: number // 경계 상한
+    prevId: string | null // move 시 앞 구간(그 끝이 따라옴)
+    nextId: string | null // move 시 뒤 구간(그 시작이 따라옴)
+    moveLo: number // move 시작 하한
+    moveHi: number // move 시작 상한
+  } | null>(null)
   const createRef = useRef<{ rectLeft: number; startTime: number; s: number; e: number } | null>(null)
   const liveRef = useRef({
     pxPerSec: 0,
@@ -63,17 +80,25 @@ function WaveformView({
   if (!handlersRef.current) {
     const move = (e: MouseEvent): void => {
       const d = dragRef.current
-      const { pxPerSec, bound, onRegionUpdate: update } = liveRef.current
+      const { pxPerSec, onRegionUpdate: update } = liveRef.current
       if (!d || pxPerSec <= 0) return
       const dt = (e.clientX - d.x0) / pxPerSec
       if (d.mode === 'start') {
-        update(d.id, { start: Math.max(0, Math.min(d.s0 + dt, d.e0 - MIN_LEN)) })
+        const start = Math.max(d.lo, Math.min(d.s0 + dt, d.hi))
+        update(d.id, { start })
+        if (d.link) update(d.link.id, { end: start }) // 이전 구간 끝을 붙임(딱딱 연결)
       } else if (d.mode === 'end') {
-        update(d.id, { end: Math.max(d.s0 + MIN_LEN, Math.min(d.e0 + dt, bound)) })
+        const end = Math.max(d.lo, Math.min(d.e0 + dt, d.hi))
+        update(d.id, { end })
+        if (d.link) update(d.link.id, { start: end }) // 다음 구간 시작을 붙임
       } else {
+        // move: 통째 이동 + 양옆 이웃도 붙어옴(연결 유지).
         const len = d.e0 - d.s0
-        const start = Math.max(0, Math.min(d.s0 + dt, bound - len))
-        update(d.id, { start, end: start + len })
+        const start = Math.max(d.moveLo, Math.min(d.s0 + dt, d.moveHi))
+        const end = start + len
+        update(d.id, { start, end })
+        if (d.prevId) update(d.prevId, { end: start }) // 앞 구간 끝을 붙임
+        if (d.nextId) update(d.nextId, { start: end }) // 뒤 구간 시작을 붙임
       }
     }
     const up = (): void => {
@@ -106,7 +131,55 @@ function WaveformView({
   const beginDrag = (e: React.MouseEvent, r: Region, mode: DragMode): void => {
     e.stopPropagation() // 파형 seek/다른 핸들과 분리
     e.preventDefault()
-    dragRef.current = { mode, id: r.id, x0: e.clientX, s0: r.start, e0: r.end }
+    // 시간 순서상 바로 옆 구간을 항상 연결 → 드래그하면 이웃도 같이 붙어 딱딱 연결(틈/겹침 방지).
+    const bound = liveRef.current.bound
+    let link: { id: string; key: 'start' | 'end' } | null = null
+    let lo = 0
+    let hi = bound
+    let prevId: string | null = null
+    let nextId: string | null = null
+    let moveLo = 0
+    let moveHi = bound
+    const sorted = regions
+      .filter((x) => Number.isFinite(x.start) && Number.isFinite(x.end))
+      .sort((a, b) => a.start - b.start)
+    const idx = sorted.findIndex((x) => x.id === r.id)
+    const prev = idx > 0 ? sorted[idx - 1] : null
+    const next = idx >= 0 && idx < sorted.length - 1 ? sorted[idx + 1] : null
+    if (mode === 'start') {
+      if (prev) {
+        link = { id: prev.id, key: 'end' }
+        lo = prev.start + MIN_LEN
+      }
+      hi = r.end - MIN_LEN
+    } else if (mode === 'end') {
+      if (next) {
+        link = { id: next.id, key: 'start' }
+        hi = next.end - MIN_LEN
+      }
+      lo = r.start + MIN_LEN
+    } else {
+      // move: 양옆 이웃이 따라옴. 이동 범위 = 앞 구간 시작~뒤 구간 끝 안쪽(이웃 폭 유지).
+      prevId = prev ? prev.id : null
+      nextId = next ? next.id : null
+      const len = r.end - r.start
+      moveLo = prev ? prev.start + MIN_LEN : 0
+      moveHi = (next ? next.end - MIN_LEN : bound) - len
+    }
+    dragRef.current = {
+      mode,
+      id: r.id,
+      x0: e.clientX,
+      s0: r.start,
+      e0: r.end,
+      link,
+      lo,
+      hi,
+      prevId,
+      nextId,
+      moveLo,
+      moveHi
+    }
     window.addEventListener('mousemove', handlersRef.current!.move)
     window.addEventListener('mouseup', handlersRef.current!.up)
   }
@@ -155,15 +228,16 @@ function WaveformView({
     }
   }, [])
 
-  // 구간 경계 x위치(px) — 각 트랙 캔버스에 넘겨 수직선으로. 유효한 값만.
-  const boundaries = useMemo(
-    () =>
-      regions
-        .flatMap((r) => [r.start, r.end])
-        .filter((t) => Number.isFinite(t))
-        .map((t) => t * pxPerSec),
-    [regions, pxPerSec]
-  )
+  // 구간 경계선(색상별) — 각 트랙 캔버스에 넘김. 구간 인덱스로 색 지정.
+  const regionMarks = useMemo(() => {
+    const out: { x: number; color: string }[] = []
+    regions.forEach((r, i) => {
+      if (!Number.isFinite(r.start) || !Number.isFinite(r.end)) return
+      const c = colorFor(i)
+      out.push({ x: r.start * pxPerSec, color: c }, { x: r.end * pxPerSec, color: c })
+    })
+    return out
+  }, [regions, pxPerSec])
   const ticks: number[] = []
   const step = niceStep(maxDuration)
   for (let t = 0; t <= maxDuration; t += step) ticks.push(t)
@@ -207,30 +281,37 @@ function WaveformView({
                     }}
                   />
                 )}
-                {regions
-                  .filter((r) => Number.isFinite(r.start) && Number.isFinite(r.end))
-                  .map((r) => (
+                {regions.map((r, i) => {
+                  if (!Number.isFinite(r.start) || !Number.isFinite(r.end)) return null
+                  const c = colorFor(i)
+                  return (
                     <div
                       key={r.id}
                       className="waveform__region"
                       style={{
                         left: r.start * pxPerSec,
-                        width: Math.max(2, (r.end - r.start) * pxPerSec)
+                        width: Math.max(2, (r.end - r.start) * pxPerSec),
+                        borderLeftColor: c,
+                        backgroundColor: `${c}22`,
+                        color: c
                       }}
                       title={`${r.name} (드래그로 조절)`}
                       onMouseDown={(e) => beginDrag(e, r, 'move')}
                     >
                       <span
                         className="waveform__region-handle waveform__region-handle--l"
+                        style={{ borderLeftColor: c }}
                         onMouseDown={(e) => beginDrag(e, r, 'start')}
                       />
                       <span className="waveform__region-name">{r.name}</span>
                       <span
                         className="waveform__region-handle waveform__region-handle--r"
+                        style={{ borderRightColor: c }}
                         onMouseDown={(e) => beginDrag(e, r, 'end')}
                       />
                     </div>
-                  ))}
+                  )
+                })}
               </div>
               <div className="waveform__ticks" style={{ marginLeft: PLOT_LEFT, width: plotWidth }}>
                 {ticks.map((t) => (
@@ -266,7 +347,7 @@ function WaveformView({
                       buffer={instTake.audioBuffer}
                       width={instTake.duration * pxPerSec}
                       height={rowH}
-                      boundaries={boundaries}
+                      marks={regionMarks}
                       color="#4a9d6a"
                     />
                   )}
@@ -284,7 +365,7 @@ function WaveformView({
                       buffer={t.audioBuffer}
                       width={t.duration * pxPerSec}
                       height={rowH}
-                      boundaries={boundaries}
+                      marks={regionMarks}
                     />
                   )}
                 </div>

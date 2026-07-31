@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { computePeaks } from '../audio/peaks'
 
+export interface RegionMark {
+  x: number // 경계 x위치(px, 공유 스케일)
+  color: string // 구간별 색상
+}
+
 interface Props {
   buffer: AudioBuffer
   width: number // css px (= 트랙 길이 × 공유 pxPerSec)
   height: number
-  boundaries: number[] // 구간 경계 x위치(px, 공유 스케일). 파형 위에 수직선으로.
+  marks: RegionMark[] // 구간 경계선(색상별). 파형 위에 수직선으로.
   color?: string
 }
 
-// 트랙 1개 파형을 캔버스에 그린다. peaks(min/max)를 픽셀 열마다 세로막대로 + 구간 경계선.
-function TrackWaveform({ buffer, width, height, boundaries, color = '#6988e6' }: Props): React.JSX.Element {
+// 트랙 1개 파형을 캔버스에 그린다. peaks(min/max)를 픽셀 열마다 세로막대로 + 구간 경계선(색상별).
+function TrackWaveform({ buffer, width, height, marks, color = '#6988e6' }: Props): React.JSX.Element {
   const ref = useRef<HTMLCanvasElement>(null)
   const cols = Math.max(1, Math.floor(width))
   // 폭/버퍼 안 바뀌면 peak 재계산 안 함(무거운 계산 메모이즈).
@@ -46,12 +51,14 @@ function TrackWaveform({ buffer, width, height, boundaries, color = '#6988e6' }:
       ctx.fillRect(x, yMax, 1, Math.max(1, yMin - yMax)) // min~max 세로막대
     }
 
-    // 구간 경계선(파형 위에 관통). 이 트랙 폭 안에 드는 경계만.
-    ctx.fillStyle = 'rgba(233,150,60,0.85)'
-    for (const bx of boundaries) {
-      if (bx >= 0 && bx < cols) ctx.fillRect(Math.round(bx), 0, 1, height)
+    // 구간 경계선(파형 위에 관통, 색상별). 이 트랙 폭 안에 드는 경계만.
+    for (const m of marks) {
+      if (m.x >= 0 && m.x < cols) {
+        ctx.fillStyle = m.color
+        ctx.fillRect(Math.round(m.x), 0, 1, height)
+      }
     }
-  }, [peaks, cols, height, color, boundaries])
+  }, [peaks, cols, height, color, marks])
 
   return <canvas ref={ref} style={{ width: `${cols}px`, height: `${height}px` }} />
 }
