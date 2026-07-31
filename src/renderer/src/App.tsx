@@ -101,19 +101,7 @@ function App(): React.JSX.Element {
         canEdit={instTake !== null}
         songLength={instTake?.duration ?? 0}
       />
-      <TakeUpload
-        takes={takes}
-        onFiles={addTakes}
-        onRemove={removeTake}
-        error={loadError}
-        progress={progress}
-        instTake={instTake}
-        onInstFiles={addInst}
-        onInstRemove={removeInst}
-        instPlaying={pb.isPlaying}
-        onInstToggle={() => instTake && pb.toggle(instTake.audioBuffer)}
-        onInstStop={() => pb.stop()}
-      />
+      <TakeUpload onFiles={addTakes} onInstFiles={addInst} error={loadError} progress={progress} />
       <WaveformView
         regions={regions}
         takes={takes}
@@ -123,6 +111,11 @@ function App(): React.JSX.Element {
         onRegionUpdate={updateRegion}
         onRegionCreate={addRegionAt}
         songLength={instTake?.duration ?? 0}
+        onTakeRemove={removeTake}
+        instPlaying={pb.isPlaying}
+        onInstToggle={() => instTake && pb.toggle(instTake.audioBuffer)}
+        onInstStop={() => pb.stop()}
+        onInstRemove={removeInst}
       />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>

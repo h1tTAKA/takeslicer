@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { IconZoom } from '@tabler/icons-react'
+import {
+  IconZoom,
+  IconTrash,
+  IconPlayerPlayFilled,
+  IconPlayerPauseFilled,
+  IconPlayerStopFilled
+} from '@tabler/icons-react'
 import { Region, TakeFile } from '../types'
 import { secToMMSS } from '../utils/time'
 import TrackWaveform from './TrackWaveform'
 
-const GUTTER = 110 // 트랙명 거터 폭(px)
+const GUTTER = 190 // 트랙 레인 헤더(이름·메타·삭제) 폭(px)
 const ROW_GAP = 8 // 라벨-플롯 사이 간격(css .waveform__row gap)
 const PLOT_LEFT = GUTTER + ROW_GAP // 파형 실제 시작 x (재생헤드·눈금·클릭 기준)
 
@@ -23,6 +29,11 @@ interface Props {
   onRegionUpdate: (id: string, patch: Partial<Region>) => void
   onRegionCreate: (start: number, end: number) => void
   songLength: number // 노래 길이(인스트) — 드래그 상한
+  onTakeRemove: (id: string) => void
+  instPlaying: boolean
+  onInstToggle: () => void
+  onInstStop: () => void
+  onInstRemove: () => void
 }
 
 type DragMode = 'start' | 'end' | 'move'
@@ -41,7 +52,12 @@ function WaveformView({
   onSeek,
   onRegionUpdate,
   onRegionCreate,
-  songLength
+  songLength,
+  onTakeRemove,
+  instPlaying,
+  onInstToggle,
+  onInstStop,
+  onInstRemove
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
@@ -338,9 +354,26 @@ function WaveformView({
             )}
             {instTake && (
               <div className="waveform__row waveform__row--inst">
-                <span className="waveform__label" title={instTake.name}>
-                  INST · {instTake.name}
-                </span>
+                <div className="waveform__lanehead" onClick={(e) => e.stopPropagation()}>
+                  <div className="waveform__lanehead-top">
+                    <button className="waveform__lane-play" onClick={onInstToggle} aria-label="재생/일시정지">
+                      {instPlaying ? <IconPlayerPauseFilled size={14} /> : <IconPlayerPlayFilled size={14} />}
+                    </button>
+                    <button className="waveform__lane-stop" onClick={onInstStop} aria-label="정지">
+                      <IconPlayerStopFilled size={12} />
+                    </button>
+                    <span className="waveform__lane-name" title={instTake.name}>
+                      INST · {instTake.name}
+                    </span>
+                    <button className="waveform__lane-del" onClick={onInstRemove} aria-label="인스트 제거">
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
+                  <div className="waveform__lane-meta">
+                    {secToMMSS(instTake.duration)} · {Math.round(instTake.sampleRate / 100) / 10}kHz ·{' '}
+                    {instTake.numChannels}ch
+                  </div>
+                </div>
                 <div className="waveform__plot" style={{ width: instTake.duration * pxPerSec, height: rowH }}>
                   {pxPerSec > 0 && (
                     <TrackWaveform
@@ -356,9 +389,23 @@ function WaveformView({
             )}
             {takes.map((t) => (
               <div key={t.id} className="waveform__row">
-                <span className="waveform__label" title={t.name}>
-                  {t.name}
-                </span>
+                <div className="waveform__lanehead" onClick={(e) => e.stopPropagation()}>
+                  <div className="waveform__lanehead-top">
+                    <span className="waveform__lane-name" title={t.name}>
+                      {t.name}
+                    </span>
+                    <button
+                      className="waveform__lane-del"
+                      onClick={() => onTakeRemove(t.id)}
+                      aria-label="트랙 제거"
+                    >
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
+                  <div className="waveform__lane-meta">
+                    {secToMMSS(t.duration)} · {Math.round(t.sampleRate / 100) / 10}kHz · {t.numChannels}ch
+                  </div>
+                </div>
                 <div className="waveform__plot" style={{ width: t.duration * pxPerSec, height: rowH }}>
                   {pxPerSec > 0 && (
                     <TrackWaveform

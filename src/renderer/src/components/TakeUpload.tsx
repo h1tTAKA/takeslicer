@@ -1,44 +1,15 @@
 import { useState, DragEvent, ChangeEvent } from 'react'
-import {
-  IconTrash,
-  IconFileMusic,
-  IconFolder,
-  IconMusic,
-  IconPlayerPlayFilled,
-  IconPlayerPauseFilled,
-  IconPlayerStopFilled
-} from '@tabler/icons-react'
-import { TakeFile } from '../types'
-import { secToMMSS } from '../utils/time'
+import { IconFileMusic, IconFolder, IconMusic } from '@tabler/icons-react'
 
 interface Props {
-  takes: TakeFile[]
   onFiles: (files: File[]) => void // 고른/떨군 파일들을 부모(App)로 올림 — 디코드는 App이
-  onRemove: (id: string) => void
+  onInstFiles: (files: File[]) => void
   error: string | null
   progress: { done: number; total: number } | null
-  instTake: TakeFile | null
-  onInstFiles: (files: File[]) => void
-  onInstRemove: () => void
-  instPlaying: boolean
-  onInstToggle: () => void
-  onInstStop: () => void
 }
 
-// 세 가지 입구(파일 선택 / 폴더 선택 / 드래그드롭)로 File들을 모아 App에 넘기고, 로드된 트랙 목록을 보여준다.
-function TakeUpload({
-  takes,
-  onFiles,
-  onRemove,
-  error,
-  progress,
-  instTake,
-  onInstFiles,
-  onInstRemove,
-  instPlaying,
-  onInstToggle,
-  onInstStop
-}: Props): React.JSX.Element {
+// 업로드 입구(파일/폴더/인스트 선택 + 드래그드롭)만 담당. 로드된 트랙 목록·재생은 파형 레인(WaveformView)에 통합.
+function TakeUpload({ onFiles, onInstFiles, error, progress }: Props): React.JSX.Element {
   const [dragOver, setDragOver] = useState(false)
 
   // input에서 고른 파일 → 부모로. value 초기화해 같은 파일 재선택도 먹히게.
@@ -87,27 +58,6 @@ function TakeUpload({
         </div>
       </div>
 
-      {instTake && (
-        <div className="take-upload__inst">
-          <button className="take-upload__play" onClick={onInstToggle} aria-label="재생/일시정지">
-            {instPlaying ? (
-              <IconPlayerPauseFilled size={16} />
-            ) : (
-              <IconPlayerPlayFilled size={16} />
-            )}
-          </button>
-          <button className="take-upload__stop" onClick={onInstStop} aria-label="정지(맨 처음으로)">
-            <IconPlayerStopFilled size={14} />
-          </button>
-          <span className="take-upload__inst-tag">INST</span>
-          <span className="take-row__name">{instTake.name}</span>
-          <span className="take-row__meta">{secToMMSS(instTake.duration)}</span>
-          <button className="take-row__del" onClick={onInstRemove} aria-label="인스트 제거">
-            <IconTrash size={16} stroke={2} />
-          </button>
-        </div>
-      )}
-
       <div
         className={dragOver ? 'take-upload__drop take-upload__drop--over' : 'take-upload__drop'}
         onDragOver={(e) => {
@@ -138,29 +88,6 @@ function TakeUpload({
       )}
 
       {error && <p className="take-upload__error">{error}</p>}
-
-      {takes.length > 0 && (
-        <>
-          <p className="take-upload__count">로드된 트랙 ({takes.length})</p>
-          <ul className="take-list">
-            {takes.map((t) => (
-              <li key={t.id} className="take-row">
-                <span className="take-row__name">{t.name}</span>
-                <span className="take-row__meta">{secToMMSS(t.duration)}</span>
-                <span className="take-row__meta">{Math.round(t.sampleRate / 100) / 10}kHz</span>
-                <span className="take-row__meta">{t.numChannels}ch</span>
-                <button
-                  className="take-row__del"
-                  onClick={() => onRemove(t.id)}
-                  aria-label="삭제"
-                >
-                  <IconTrash size={16} stroke={2} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
     </div>
   )
 }

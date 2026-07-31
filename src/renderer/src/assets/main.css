@@ -336,7 +336,7 @@ body {
   z-index: 2;
 }
 
-.waveform__row--inst .waveform__label {
+.waveform__row--inst .waveform__lane-name {
   color: #4a9d6a;
   font-weight: 700;
 }
@@ -405,19 +405,79 @@ body {
   width: max-content;
 }
 
-.waveform__label {
-  position: sticky; /* 가로 스크롤해도 트랙명은 왼쪽에 고정 */
+/* DAW 트랙 레인 헤더(이름·메타·삭제·재생) — 파형 왼쪽 고정 */
+.waveform__lanehead {
+  position: sticky;
   left: 0;
-  z-index: 1;
-  width: 110px;
+  z-index: 3;
+  width: 190px;
   flex-shrink: 0;
-  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding-right: 8px;
   background-color: var(--color-background);
+  overflow: hidden;
+}
+
+.waveform__lanehead-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.waveform__lane-name {
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
-  color: var(--ev-c-text-2);
+  color: var(--ev-c-text-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.waveform__lane-meta {
+  font-size: 10px;
+  color: var(--ev-c-text-2);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.waveform__lane-del,
+.waveform__lane-stop {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 1px solid var(--ev-c-gray-1);
+  border-radius: 5px;
+  color: var(--ev-c-text-2);
+  background: transparent;
+}
+
+.waveform__lane-del:hover,
+.waveform__lane-stop:hover {
+  background-color: var(--color-background-mute);
+}
+
+.waveform__lane-play {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  background-color: #4a9d6a;
 }
 
 .waveform__plot {
