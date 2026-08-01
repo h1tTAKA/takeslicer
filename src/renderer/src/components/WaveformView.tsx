@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   IconArrowsHorizontal,
   IconArrowsVertical,
   IconTrash,
   IconPlayerPlayFilled,
   IconPlayerPauseFilled,
-  IconPlayerStopFilled
+  IconPlayerStopFilled,
+  IconChevronRight
 } from '@tabler/icons-react'
-import { Region, TakeFile } from '../types'
+import { Region, TakeFile, RenderConfig } from '../types'
 import { secToMMSS } from '../utils/time'
+import { sliceRegion } from '../audio/slice'
 import TrackWaveform from './TrackWaveform'
 
 const GUTTER = 190 // 트랙 레인 헤더(이름·메타·삭제) 폭(px)
@@ -16,12 +18,21 @@ const ROW_GAP = 8 // 라벨-플롯 사이 간격(css .waveform__row gap)
 const PLOT_LEFT = GUTTER + ROW_GAP // 파형 실제 시작 x (재생헤드·눈금·클릭 기준)
 
 // 시간 눈금 간격: 픽셀 밀도(pxPerSec) 기준으로 라벨이 ~80px 이상 벌어지는 최소 간격.
-// 가로 확대하면 pxPerSec가 커져 간격이 초 단위까지 촘촘해진다.
 function niceStep(pxPerSec: number): number {
   if (pxPerSec <= 0) return 60
-  const target = 80 / pxPerSec // ~80px당 몇 초
+  const target = 80 / pxPerSec
   for (const c of [1, 2, 5, 10, 15, 30, 60, 120, 300, 600]) if (c >= target) return c
   return 600
+}
+
+// SliceResult.channelData를 TrackWaveform이 읽을 수 있게 AudioBuffer 흉내.
+function fakeBuffer(ch: Float32Array[], length: number, sampleRate: number): AudioBuffer {
+  return {
+    numberOfChannels: ch.length,
+    length,
+    sampleRate,
+    getChannelData: (c: number) => ch[c]
+  } as unknown as AudioBuffer
 }
 
 interface Props {
@@ -38,12 +49,12 @@ interface Props {
   onInstToggle: () => void
   onInstStop: () => void
   onInstRemove: () => void
+  config: RenderConfig
 }
 
 type DragMode = 'start' | 'end' | 'move'
 const MIN_LEN = 0.05 // 구간 최소 폭(초)
 
-// 구간별 색상 팔레트(눈에 딱딱 구분되게). 인덱스로 순환.
 const PALETTE = ['#e8963c', '#6988e6', '#4a9d6a', '#c0569e', '#d4b13a', '#5aacc0', '#d5654a', '#8a6fd4']
 const colorFor = (i: number): string => PALETTE[((i % PALETTE.length) + PALETTE.length) % PALETTE.length]
 
@@ -61,37 +72,32 @@ function WaveformView({
   instPlaying,
   onInstToggle,
   onInstStop,
-  onInstRemove
+  onInstRemove,
+  config
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
-  const [rowH, setRowH] = useState(40) // 세로(트랙 높이) px — 파형 크게/작게 보기
-  const [zoomX, setZoomX] = useState(1) // 가로(시간) 배율 — 1=폭에 맞춤, >1=확대+가로스크롤
-  const [createRange, setCreateRange] = useState<{ s: number; e: number } | null>(null) // 생성 드래그 프리뷰
+  const [rowH, setRowH] = useState(40)
+  const [zoomX, setZoomX] = useState(1)
+  const [createRange, setCreateRange] = useState<{ s: number; e: number } | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null) // 펼친 트랙(구간별 결과 미리보기)
 
-  // 드래그 상태 + 최신 값(스케일/콜백)을 ref로 → window 리스너가 stale closure 안 겪게.
   const dragRef = useRef<{
     mode: DragMode
     id: string
     x0: number
     s0: number
     e0: number
-    link: { id: string; key: 'start' | 'end' } | null // start/end 드래그 시 연결할 이웃
-    lo: number // 경계 하한
-    hi: number // 경계 상한
-    prevId: string | null // move 시 앞 구간(그 끝이 따라옴)
-    nextId: string | null // move 시 뒤 구간(그 시작이 따라옴)
-    moveLo: number // move 시작 하한
-    moveHi: number // move 시작 상한
+    link: { id: string; key: 'start' | 'end' } | null
+    lo: number
+    hi: number
+    prevId: string | null
+    nextId: string | null
+    moveLo: number
+    moveHi: number
   } | null>(null)
   const createRef = useRef<{ rectLeft: number; startTime: number; s: number; e: number } | null>(null)
-  const liveRef = useRef({
-    pxPerSec: 0,
-    bound: 1, // 드래그 상한(노래 길이)
-    onRegionUpdate,
-    onRegionCreate,
-    setCreateRange
-  })
+  const liveRef = useRef({ pxPerSec: 0, bound: 1, onRegionUpdate, onRegionCreate, setCreateRange })
   const handlersRef = useRef<{
     move: (e: MouseEvent) => void
     up: () => void
@@ -107,19 +113,18 @@ function WaveformView({
       if (d.mode === 'start') {
         const start = Math.max(d.lo, Math.min(d.s0 + dt, d.hi))
         update(d.id, { start })
-        if (d.link) update(d.link.id, { end: start }) // 이전 구간 끝을 붙임(딱딱 연결)
+        if (d.link) update(d.link.id, { end: start })
       } else if (d.mode === 'end') {
         const end = Math.max(d.lo, Math.min(d.e0 + dt, d.hi))
         update(d.id, { end })
-        if (d.link) update(d.link.id, { start: end }) // 다음 구간 시작을 붙임
+        if (d.link) update(d.link.id, { start: end })
       } else {
-        // move: 통째 이동 + 양옆 이웃도 붙어옴(연결 유지).
         const len = d.e0 - d.s0
         const start = Math.max(d.moveLo, Math.min(d.s0 + dt, d.moveHi))
         const end = start + len
         update(d.id, { start, end })
-        if (d.prevId) update(d.prevId, { end: start }) // 앞 구간 끝을 붙임
-        if (d.nextId) update(d.nextId, { start: end }) // 뒤 구간 시작을 붙임
+        if (d.prevId) update(d.prevId, { end: start })
+        if (d.nextId) update(d.nextId, { start: end })
       }
     }
     const up = (): void => {
@@ -127,7 +132,6 @@ function WaveformView({
       window.removeEventListener('mousemove', move)
       window.removeEventListener('mouseup', up)
     }
-    // 빈 곳 드래그 → 새 구간 프리뷰
     const cMove = (e: MouseEvent): void => {
       const c = createRef.current
       const { pxPerSec, bound, setCreateRange: setRange } = liveRef.current
@@ -150,9 +154,8 @@ function WaveformView({
   }
 
   const beginDrag = (e: React.MouseEvent, r: Region, mode: DragMode): void => {
-    e.stopPropagation() // 파형 seek/다른 핸들과 분리
+    e.stopPropagation()
     e.preventDefault()
-    // 시간 순서상 바로 옆 구간을 항상 연결 → 드래그하면 이웃도 같이 붙어 딱딱 연결(틈/겹침 방지).
     const bound = liveRef.current.bound
     let link: { id: string; key: 'start' | 'end' } | null = null
     let lo = 0
@@ -180,32 +183,17 @@ function WaveformView({
       }
       lo = r.start + MIN_LEN
     } else {
-      // move: 양옆 이웃이 따라옴. 이동 범위 = 앞 구간 시작~뒤 구간 끝 안쪽(이웃 폭 유지).
       prevId = prev ? prev.id : null
       nextId = next ? next.id : null
       const len = r.end - r.start
       moveLo = prev ? prev.start + MIN_LEN : 0
       moveHi = (next ? next.end - MIN_LEN : bound) - len
     }
-    dragRef.current = {
-      mode,
-      id: r.id,
-      x0: e.clientX,
-      s0: r.start,
-      e0: r.end,
-      link,
-      lo,
-      hi,
-      prevId,
-      nextId,
-      moveLo,
-      moveHi
-    }
+    dragRef.current = { mode, id: r.id, x0: e.clientX, s0: r.start, e0: r.end, link, lo, hi, prevId, nextId, moveLo, moveHi }
     window.addEventListener('mousemove', handlersRef.current!.move)
     window.addEventListener('mouseup', handlersRef.current!.up)
   }
 
-  // 구간 바 빈 곳 mousedown → 생성 드래그(블록은 stopPropagation이라 여기 안 옴).
   const beginCreate = (e: React.MouseEvent): void => {
     const rect = e.currentTarget.getBoundingClientRect()
     const t = pxPerSec > 0 ? Math.max(0, Math.min((e.clientX - rect.left) / pxPerSec, bound)) : 0
@@ -215,7 +203,6 @@ function WaveformView({
     window.addEventListener('mouseup', handlersRef.current!.cUp)
   }
 
-  // 컨테이너 실제 폭 측정(캔버스는 픽셀 폭 필요). 창 크기 바뀌면 갱신.
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -224,19 +211,44 @@ function WaveformView({
     return () => ro.disconnect()
   }, [])
 
-  // 공유 시간축 길이 = 실제 오디오(가장 긴 트랙) 기준. 폭에 딱 맞춤.
-  // 구간이 오디오보다 길면 경계선은 화면 밖으로 잘림(=오디오 범위 밖 신호) — 파형은 항상 꽉 차게 유지.
+  // DAW식 줌: Cmd/Ctrl 누르고 스크롤 — 상하=세로, 좌우(또는 Shift)=가로. rAF로 프레임당 1회만.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let accX = 0
+    let accY = 0
+    let raf = 0
+    const flush = (): void => {
+      raf = 0
+      if (accY !== 0) setRowH((h) => Math.max(24, Math.min(320, h - accY * 1.1)))
+      if (accX !== 0) setZoomX((z) => Math.max(1, Math.min(40, z - accX * 0.06)))
+      accX = 0
+      accY = 0
+    }
+    const onWheel = (e: WheelEvent): void => {
+      if (!e.metaKey && !e.ctrlKey) return
+      e.preventDefault()
+      const horizontal = e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)
+      if (horizontal) accX += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+      else accY += e.deltaY
+      if (!raf) raf = requestAnimationFrame(flush)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
   const plotWidth = Math.max(0, width - PLOT_LEFT)
-  // 인스트 포함 가장 긴 길이(인스트 = 노래 전체 길이 레퍼런스).
   const durations = [...takes.map((t) => t.duration), ...(instTake ? [instTake.duration] : [])]
   const trackMax = durations.length > 0 ? Math.max(...durations) : 0
   const validEnds = regions.map((r) => r.end).filter((v) => Number.isFinite(v))
-  // 트랙/인스트 있으면 그 길이 기준, 없으면(파형 없음) 구간 끝 기준.
   const maxDuration = trackMax > 0 ? trackMax : Math.max(...validEnds, 1)
   const pxPerSec = plotWidth > 0 ? (plotWidth / maxDuration) * zoomX : 0
-  const timelineWidth = maxDuration * pxPerSec // 가로 확대 시 실제 타임라인 폭
-  const bound = songLength > 0 ? songLength : maxDuration // 드래그 상한 = 노래 길이(없으면 타임라인)
-  liveRef.current = { pxPerSec, bound, onRegionUpdate, onRegionCreate, setCreateRange } // 드래그 리스너가 읽을 최신 값
+  const timelineWidth = maxDuration * pxPerSec
+  const bound = songLength > 0 ? songLength : maxDuration
+  liveRef.current = { pxPerSec, bound, onRegionUpdate, onRegionCreate, setCreateRange }
 
   useEffect(() => {
     const h = handlersRef.current
@@ -250,7 +262,6 @@ function WaveformView({
     }
   }, [])
 
-  // 구간 경계선(색상별) — 각 트랙 캔버스에 넘김. 구간 인덱스로 색 지정.
   const regionMarks = useMemo(() => {
     const out: { x: number; color: string }[] = []
     regions.forEach((r, i) => {
@@ -260,9 +271,27 @@ function WaveformView({
     })
     return out
   }, [regions, pxPerSec])
+
+  // 펼친 트랙의 구간별 슬라이스 결과 미리보기(config 적용). 무음 구간은 slice=null(스킵).
+  const expandedSlices = useMemo(() => {
+    if (!expandedId) return null
+    const t = takes.find((x) => x.id === expandedId)
+    if (!t) return null
+    return regions
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => Number.isFinite(r.start) && Number.isFinite(r.end) && r.end > r.start && r.name.trim())
+      .map(({ r, i }) => ({
+        region: r,
+        color: colorFor(i),
+        slice: sliceRegion(t.audioBuffer, r.name, t.name, r.start, r.end, config)
+      }))
+  }, [expandedId, takes, regions, config])
+
   const ticks: number[] = []
   const step = niceStep(pxPerSec)
   for (let t = 0; t <= maxDuration; t += step) ticks.push(t)
+
+  const subH = Math.max(24, Math.round(rowH * 0.6))
 
   return (
     <div className="waveform" ref={ref}>
@@ -273,25 +302,11 @@ function WaveformView({
           <div className="waveform__zoom">
             <label className="waveform__zoom-ctl" title="Zoom X">
               <IconArrowsHorizontal size={16} stroke={2} />
-              <input
-                type="range"
-                min={1}
-                max={40}
-                step={0.5}
-                value={zoomX}
-                onChange={(e) => setZoomX(Number(e.target.value))}
-              />
+              <input type="range" min={1} max={40} step={0.5} value={zoomX} onChange={(e) => setZoomX(Number(e.target.value))} />
             </label>
             <label className="waveform__zoom-ctl" title="Zoom Y">
               <IconArrowsVertical size={16} stroke={2} />
-              <input
-                type="range"
-                min={24}
-                max={320}
-                step={4}
-                value={rowH}
-                onChange={(e) => setRowH(Number(e.target.value))}
-              />
+              <input type="range" min={24} max={320} step={4} value={rowH} onChange={(e) => setRowH(Number(e.target.value))} />
             </label>
           </div>
         )}
@@ -304,51 +319,30 @@ function WaveformView({
             <div className="waveform__rulers">
               <div className="waveform__ruler-strip">
                 <div className="waveform__ruler-gutter" />
-                <div
-                  className="waveform__regionbar"
-                  style={{ width: timelineWidth }}
-                  onMouseDown={beginCreate}
-                >
-                {createRange && (
-                  <div
-                    className="waveform__region-preview"
-                    style={{
-                      left: createRange.s * pxPerSec,
-                      width: Math.max(1, (createRange.e - createRange.s) * pxPerSec)
-                    }}
-                  />
-                )}
-                {regions.map((r, i) => {
-                  if (!Number.isFinite(r.start) || !Number.isFinite(r.end)) return null
-                  const c = colorFor(i)
-                  return (
+                <div className="waveform__regionbar" style={{ width: timelineWidth }} onMouseDown={beginCreate}>
+                  {createRange && (
                     <div
-                      key={r.id}
-                      className="waveform__region"
-                      style={{
-                        left: r.start * pxPerSec,
-                        width: Math.max(2, (r.end - r.start) * pxPerSec),
-                        borderLeftColor: c,
-                        backgroundColor: `${c}22`,
-                        color: c
-                      }}
-                      title={`${r.name} (drag to adjust)`}
-                      onMouseDown={(e) => beginDrag(e, r, 'move')}
-                    >
-                      <span
-                        className="waveform__region-handle waveform__region-handle--l"
-                        style={{ borderLeftColor: c }}
-                        onMouseDown={(e) => beginDrag(e, r, 'start')}
-                      />
-                      <span className="waveform__region-name">{r.name}</span>
-                      <span
-                        className="waveform__region-handle waveform__region-handle--r"
-                        style={{ borderRightColor: c }}
-                        onMouseDown={(e) => beginDrag(e, r, 'end')}
-                      />
-                    </div>
-                  )
-                })}
+                      className="waveform__region-preview"
+                      style={{ left: createRange.s * pxPerSec, width: Math.max(1, (createRange.e - createRange.s) * pxPerSec) }}
+                    />
+                  )}
+                  {regions.map((r, i) => {
+                    if (!Number.isFinite(r.start) || !Number.isFinite(r.end)) return null
+                    const c = colorFor(i)
+                    return (
+                      <div
+                        key={r.id}
+                        className="waveform__region"
+                        style={{ left: r.start * pxPerSec, width: Math.max(2, (r.end - r.start) * pxPerSec), borderLeftColor: c, backgroundColor: `${c}22`, color: c }}
+                        title={`${r.name} (drag to adjust)`}
+                        onMouseDown={(e) => beginDrag(e, r, 'move')}
+                      >
+                        <span className="waveform__region-handle waveform__region-handle--l" style={{ borderLeftColor: c }} onMouseDown={(e) => beginDrag(e, r, 'start')} />
+                        <span className="waveform__region-name">{r.name}</span>
+                        <span className="waveform__region-handle waveform__region-handle--r" style={{ borderRightColor: c }} onMouseDown={(e) => beginDrag(e, r, 'end')} />
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
               <div className="waveform__ruler-strip">
@@ -372,10 +366,7 @@ function WaveformView({
             }}
           >
             {instTake && pxPerSec > 0 && (
-              <div
-                className="waveform__playhead"
-                style={{ left: PLOT_LEFT + currentTime * pxPerSec }}
-              />
+              <div className="waveform__playhead" style={{ left: PLOT_LEFT + currentTime * pxPerSec }} />
             )}
             {instTake && (
               <div className="waveform__row waveform__row--inst">
@@ -395,53 +386,74 @@ function WaveformView({
                     </button>
                   </div>
                   <div className="waveform__lane-meta">
-                    {secToMMSS(instTake.duration)} · {Math.round(instTake.sampleRate / 100) / 10}kHz ·{' '}
-                    {instTake.numChannels}ch
+                    {secToMMSS(instTake.duration)} · {Math.round(instTake.sampleRate / 100) / 10}kHz · {instTake.numChannels}ch
                   </div>
                 </div>
                 <div className="waveform__plot" style={{ width: instTake.duration * pxPerSec, height: rowH }}>
                   {pxPerSec > 0 && (
-                    <TrackWaveform
-                      buffer={instTake.audioBuffer}
-                      width={instTake.duration * pxPerSec}
-                      height={rowH}
-                      marks={regionMarks}
-                      color="#4a9d6a"
-                    />
+                    <TrackWaveform buffer={instTake.audioBuffer} width={instTake.duration * pxPerSec} height={rowH} marks={regionMarks} color="#4a9d6a" />
                   )}
                 </div>
               </div>
             )}
             {takes.map((t) => (
-              <div key={t.id} className="waveform__row">
-                <div className="waveform__lanehead" onClick={(e) => e.stopPropagation()}>
-                  <div className="waveform__lanehead-top">
-                    <span className="waveform__lane-name" title={t.name}>
-                      {t.name}
-                    </span>
-                    <button
-                      className="waveform__lane-del"
-                      onClick={() => onTakeRemove(t.id)}
-                      aria-label="Remove"
-                    >
-                      <IconTrash size={14} />
-                    </button>
+              <Fragment key={t.id}>
+                <div className="waveform__row">
+                  <div className="waveform__lanehead" onClick={(e) => e.stopPropagation()}>
+                    <div className="waveform__lanehead-top">
+                      <button
+                        className="waveform__lane-expand"
+                        onClick={() => setExpandedId((id) => (id === t.id ? null : t.id))}
+                        aria-label="Toggle split preview"
+                      >
+                        <IconChevronRight size={14} style={{ transform: expandedId === t.id ? 'rotate(90deg)' : 'none' }} />
+                      </button>
+                      <span className="waveform__lane-name" title={t.name}>
+                        {t.name}
+                      </span>
+                      <button className="waveform__lane-del" onClick={() => onTakeRemove(t.id)} aria-label="Remove">
+                        <IconTrash size={14} />
+                      </button>
+                    </div>
+                    <div className="waveform__lane-meta">
+                      {secToMMSS(t.duration)} · {Math.round(t.sampleRate / 100) / 10}kHz · {t.numChannels}ch
+                    </div>
                   </div>
-                  <div className="waveform__lane-meta">
-                    {secToMMSS(t.duration)} · {Math.round(t.sampleRate / 100) / 10}kHz · {t.numChannels}ch
+                  <div className="waveform__plot" style={{ width: t.duration * pxPerSec, height: rowH }}>
+                    {pxPerSec > 0 && <TrackWaveform buffer={t.audioBuffer} width={t.duration * pxPerSec} height={rowH} marks={regionMarks} />}
                   </div>
                 </div>
-                <div className="waveform__plot" style={{ width: t.duration * pxPerSec, height: rowH }}>
-                  {pxPerSec > 0 && (
-                    <TrackWaveform
-                      buffer={t.audioBuffer}
-                      width={t.duration * pxPerSec}
-                      height={rowH}
-                      marks={regionMarks}
-                    />
-                  )}
-                </div>
-              </div>
+
+                {expandedId === t.id &&
+                  expandedSlices &&
+                  expandedSlices.map(({ region, color, slice }) => {
+                    const dur = slice ? slice.length / slice.sampleRate : 0
+                    return (
+                      <div className="waveform__row waveform__row--sub" key={region.id}>
+                        <div className="waveform__lanehead waveform__lanehead--sub" onClick={(e) => e.stopPropagation()}>
+                          <span className="waveform__lane-name" style={{ color }}>
+                            {region.name || '(unnamed)'}
+                          </span>
+                          <span className="waveform__lane-meta">
+                            {slice ? `0:00 – ${secToMMSS(dur)}` : 'silent · skipped'}
+                          </span>
+                        </div>
+                        <div className="waveform__plot" style={{ width: (dur || region.end - region.start) * pxPerSec, height: subH }}>
+                          {slice && pxPerSec > 0 && (
+                            <TrackWaveform
+                              buffer={fakeBuffer(slice.channelData, slice.length, slice.sampleRate)}
+                              width={dur * pxPerSec}
+                              height={subH}
+                              marks={[]}
+                              color={color}
+                              threshold={config.rmsThreshold}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+              </Fragment>
             ))}
           </div>
         </div>

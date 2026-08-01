@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import RegionForm from './components/RegionForm'
 import TakeUpload from './components/TakeUpload'
 import WaveformView from './components/WaveformView'
@@ -90,6 +90,19 @@ function App(): React.JSX.Element {
   const addRegionAt = (start: number, end: number): void =>
     setRegions((rs) => [...rs, { id: crypto.randomUUID(), name: '', start, end }])
 
+  // 스페이스바 = 인스트 재생/일시정지 (입력칸 포커스 중엔 무시).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.code !== 'Space' || !instTake) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      e.preventDefault()
+      pb.toggle(instTake.audioBuffer)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [instTake, pb])
+
   return (
     <div className="app">
       <h1>takeslicer</h1>
@@ -116,6 +129,7 @@ function App(): React.JSX.Element {
         onInstToggle={() => instTake && pb.toggle(instTake.audioBuffer)}
         onInstStop={() => pb.stop()}
         onInstRemove={removeInst}
+        config={config}
       />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>
