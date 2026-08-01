@@ -77,10 +77,22 @@ function WaveformView({
 }: Props): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0) // 가로 스크롤 위치 — 파형은 보이는 창만 그림(windowing)
+  const scrollRaf = useRef(0)
   const [rowH, setRowH] = useState(40)
   const [zoomX, setZoomX] = useState(1)
   const [createRange, setCreateRange] = useState<{ s: number; e: number } | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null) // 펼친 트랙(구간별 결과 미리보기)
+
+  // 스크롤 위치 추적(rAF로 프레임당 1회). 뷰포트 폭은 이미 재는 width를 그대로 씀(측정 이중화 방지).
+  const onScroll = (e: React.UIEvent<HTMLDivElement>): void => {
+    const left = e.currentTarget.scrollLeft
+    if (scrollRaf.current) return
+    scrollRaf.current = requestAnimationFrame(() => {
+      scrollRaf.current = 0
+      setScrollLeft(left)
+    })
+  }
 
   const dragRef = useRef<{
     mode: DragMode
@@ -293,6 +305,11 @@ function WaveformView({
 
   const subH = Math.max(24, Math.round(rowH * 0.6))
 
+  // 보이는 창(plot-local css px) — 모든 트랙이 같은 스크롤/뷰포트를 공유하므로 한 번만 계산.
+  // 뷰포트 폭 = width(정상 측정값). plot은 content x=PLOT_LEFT에서 시작하므로 그만큼 뺌.
+  const viewStart = scrollLeft - PLOT_LEFT
+  const viewEnd = scrollLeft + width - PLOT_LEFT
+
   return (
     <div className="waveform" ref={ref}>
       <div className="waveform__header">
@@ -314,7 +331,7 @@ function WaveformView({
       {takes.length === 0 && !instTake ? (
         <p className="waveform__empty">Upload tracks to see waveforms.</p>
       ) : (
-        <div className="waveform__scroll">
+        <div className="waveform__scroll" onScroll={onScroll}>
           {pxPerSec > 0 && (
             <div className="waveform__rulers">
               <div className="waveform__ruler-strip">
@@ -391,7 +408,7 @@ function WaveformView({
                 </div>
                 <div className="waveform__plot" style={{ width: instTake.duration * pxPerSec, height: rowH }}>
                   {pxPerSec > 0 && (
-                    <TrackWaveform buffer={instTake.audioBuffer} width={instTake.duration * pxPerSec} height={rowH} marks={regionMarks} color="#4a9d6a" />
+                    <TrackWaveform buffer={instTake.audioBuffer} width={instTake.duration * pxPerSec} height={rowH} marks={regionMarks} color="#4a9d6a" viewStart={viewStart} viewEnd={viewEnd} />
                   )}
                 </div>
               </div>
@@ -420,7 +437,7 @@ function WaveformView({
                     </div>
                   </div>
                   <div className="waveform__plot" style={{ width: t.duration * pxPerSec, height: rowH }}>
-                    {pxPerSec > 0 && <TrackWaveform buffer={t.audioBuffer} width={t.duration * pxPerSec} height={rowH} marks={regionMarks} />}
+                    {pxPerSec > 0 && <TrackWaveform buffer={t.audioBuffer} width={t.duration * pxPerSec} height={rowH} marks={regionMarks} viewStart={viewStart} viewEnd={viewEnd} />}
                   </div>
                 </div>
 
@@ -447,6 +464,8 @@ function WaveformView({
                               marks={[]}
                               color={color}
                               threshold={config.rmsThreshold}
+                              viewStart={viewStart}
+                              viewEnd={viewEnd}
                             />
                           )}
                         </div>
