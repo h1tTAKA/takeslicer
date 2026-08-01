@@ -267,11 +267,11 @@ function WaveformView({
   return (
     <div className="waveform" ref={ref}>
       <div className="waveform__header">
-        <h2>파형 검증</h2>
+        <h2>Waveform</h2>
         {instTake && <span className="waveform__time">{secToMMSS(currentTime)}</span>}
         {(takes.length > 0 || instTake) && (
           <div className="waveform__zoom">
-            <label className="waveform__zoom-ctl" title="가로 확대">
+            <label className="waveform__zoom-ctl" title="Zoom X">
               <IconArrowsHorizontal size={16} stroke={2} />
               <input
                 type="range"
@@ -282,7 +282,7 @@ function WaveformView({
                 onChange={(e) => setZoomX(Number(e.target.value))}
               />
             </label>
-            <label className="waveform__zoom-ctl" title="세로 확대">
+            <label className="waveform__zoom-ctl" title="Zoom Y">
               <IconArrowsVertical size={16} stroke={2} />
               <input
                 type="range"
@@ -297,7 +297,7 @@ function WaveformView({
         )}
       </div>
       {takes.length === 0 && !instTake ? (
-        <p className="waveform__empty">트랙을 업로드하면 파형이 여기 표시됩니다.</p>
+        <p className="waveform__empty">Upload tracks to see waveforms.</p>
       ) : (
         <div className="waveform__scroll">
           {pxPerSec > 0 && (
@@ -332,7 +332,7 @@ function WaveformView({
                         backgroundColor: `${c}22`,
                         color: c
                       }}
-                      title={`${r.name} (드래그로 조절)`}
+                      title={`${r.name} (drag to adjust)`}
                       onMouseDown={(e) => beginDrag(e, r, 'move')}
                     >
                       <span
@@ -381,16 +381,16 @@ function WaveformView({
               <div className="waveform__row waveform__row--inst">
                 <div className="waveform__lanehead" onClick={(e) => e.stopPropagation()}>
                   <div className="waveform__lanehead-top">
-                    <button className="waveform__lane-play" onClick={onInstToggle} aria-label="재생/일시정지">
+                    <button className="waveform__lane-play" onClick={onInstToggle} aria-label="Play/Pause">
                       {instPlaying ? <IconPlayerPauseFilled size={14} /> : <IconPlayerPlayFilled size={14} />}
                     </button>
-                    <button className="waveform__lane-stop" onClick={onInstStop} aria-label="정지">
+                    <button className="waveform__lane-stop" onClick={onInstStop} aria-label="Stop">
                       <IconPlayerStopFilled size={12} />
                     </button>
                     <span className="waveform__lane-name" title={instTake.name}>
                       INST · {instTake.name}
                     </span>
-                    <button className="waveform__lane-del" onClick={onInstRemove} aria-label="인스트 제거">
+                    <button className="waveform__lane-del" onClick={onInstRemove} aria-label="Remove">
                       <IconTrash size={14} />
                     </button>
                   </div>
@@ -422,7 +422,7 @@ function WaveformView({
                     <button
                       className="waveform__lane-del"
                       onClick={() => onTakeRemove(t.id)}
-                      aria-label="트랙 제거"
+                      aria-label="Remove"
                     >
                       <IconTrash size={14} />
                     </button>

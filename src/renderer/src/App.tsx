@@ -14,7 +14,7 @@ function App(): React.JSX.Element {
   const [takes, setTakes] = useState<TakeFile[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  // 렌더 설정(캘리브레이션 노브). 다음 렌더 이슈에서 실제 파일 생성에 사용.
+  // Render(캘리브레이션 노브). 다음 렌더 이슈에서 실제 파일 생성에 사용.
   const [config, setConfig] = useState<RenderConfig>({ rmsThreshold: 0.02, minActiveMs: 120, tailSec: 2 })
   // 인스트(반주) 레퍼런스 트랙 — takes(슬라이스 대상)와 분리. 재생·구간 잡기용.
   const [instTake, setInstTake] = useState<TakeFile | null>(null)
@@ -26,7 +26,7 @@ function App(): React.JSX.Element {
     try {
       setInstTake(await decodeWavFile(wav))
     } catch (e) {
-      setLoadError(`인스트: ${(e as Error).message}`)
+      setLoadError(`Inst: ${(e as Error).message}`)
     }
   }
   const removeInst = (): void => {
@@ -41,7 +41,7 @@ function App(): React.JSX.Element {
     setLoadError(null)
     const wavs = files.filter(isWavFile)
     if (files.length > 0 && wavs.length === 0) {
-      setLoadError('WAV 파일이 없습니다')
+      setLoadError('No WAV files')
       return
     }
     setProgress({ done: 0, total: wavs.length })
@@ -67,7 +67,7 @@ function App(): React.JSX.Element {
       setProgress({ done: i + 1, total: wavs.length })
     }
     setProgress(null)
-    if (skipped > 0) errs.unshift(`${skipped}개는 이미 로드되어 건너뜀`)
+    if (skipped > 0) errs.unshift(`${skipped} already loaded, skipped`)
     if (errs.length > 0) setLoadError(errs.join(' / '))
   }
 

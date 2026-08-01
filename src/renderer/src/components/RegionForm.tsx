@@ -37,17 +37,17 @@ function RegionForm({
   return (
     <div className="region-form">
       <div className="region-form__header">
-        <h2>구간 목록</h2>
+        <h2>Sections</h2>
         <button className="region-form__add" onClick={onAdd} disabled={!canEdit}>
           <IconPlus size={16} stroke={2} />
-          구성 추가
+          Add section
         </button>
       </div>
 
       {!canEdit ? (
-        <p className="region-form__empty">먼저 인스트(반주)를 올리면 구간을 설정할 수 있습니다.</p>
+        <p className="region-form__empty">Load an instrumental first to set up sections.</p>
       ) : regions.length === 0 ? (
-        <p className="region-form__empty">구성을 추가해 곡 구간을 입력하세요.</p>
+        <p className="region-form__empty">Add sections to mark the song parts.</p>
       ) : (
         <ul className="region-list">
           {regions.map((r) => {
@@ -57,7 +57,7 @@ function RegionForm({
                 <div className={errs.length ? 'region-row region-row--invalid' : 'region-row'}>
                   <input
                     className="region-row__name"
-                    placeholder="구간 이름 (예: 싸비)"
+                    placeholder="Name (e.g. Chorus)"
                     value={r.name}
                     onChange={(e) => onUpdate(r.id, { name: e.target.value })}
                   />
@@ -81,7 +81,7 @@ function RegionForm({
                     defaultValue={secToMMSS(r.end)}
                     onBlur={(e) => commitTime(r.id, 'end', e.target)}
                   />
-                  <button className="region-row__del" onClick={() => onRemove(r.id)} aria-label="삭제">
+                  <button className="region-row__del" onClick={() => onRemove(r.id)} aria-label="Delete">
                     <IconTrash size={16} stroke={2} />
                   </button>
                 </div>

@@ -4,13 +4,13 @@ import { Region } from '../types'
 // 화면(RegionForm)은 이 목록이 비지 않은 행에 경고를 표시한다.
 export function validateRegion(r: Region): string[] {
   const errs: string[] = []
-  if (!r.name.trim()) errs.push('이름을 입력하세요')
+  if (!r.name.trim()) errs.push('Enter a name')
   if (Number.isNaN(r.start) || Number.isNaN(r.end)) {
-    errs.push('시간 형식이 올바르지 않습니다 (예: 0:32)')
+    errs.push('Invalid time (e.g. 0:32)')
     return errs // 시간이 숫자가 아니면 아래 크기 비교는 의미 없음
   }
-  if (r.start < 0 || r.end < 0) errs.push('시간은 음수일 수 없습니다')
-  if (r.end <= r.start) errs.push('끝이 시작보다 커야 합니다')
+  if (r.start < 0 || r.end < 0) errs.push('Time cannot be negative')
+  if (r.end <= r.start) errs.push('End must be after start')
   return errs
 }
 

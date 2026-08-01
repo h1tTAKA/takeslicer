@@ -32,16 +32,21 @@ function TakeUpload({ onFiles, onInstFiles, error, progress }: Props): React.JSX
   return (
     <div className="take-upload">
       <div className="take-upload__header">
-        <h2>녹음 트랙</h2>
+        <h2>Tracks</h2>
         <div className="take-upload__buttons">
           <label className="take-upload__btn">
+            <IconMusic size={16} stroke={2} />
+            Inst
+            <input type="file" accept=".wav,audio/wav" hidden onChange={handleInstInput} />
+          </label>
+          <label className="take-upload__btn">
             <IconFileMusic size={16} stroke={2} />
-            파일 선택
+            Files
             <input type="file" accept=".wav,audio/wav" multiple hidden onChange={handleInput} />
           </label>
           <label className="take-upload__btn">
             <IconFolder size={16} stroke={2} />
-            폴더 선택
+            Folder
             {/* webkitdirectory는 React 표준 타입에 없어 spread+as any로 부여 (폴더 통째 선택) */}
             <input
               type="file"
@@ -49,11 +54,6 @@ function TakeUpload({ onFiles, onInstFiles, error, progress }: Props): React.JSX
               onChange={handleInput}
               {...({ webkitdirectory: '' } as unknown as Record<string, string>)}
             />
-          </label>
-          <label className="take-upload__btn">
-            <IconMusic size={16} stroke={2} />
-            인스트
-            <input type="file" accept=".wav,audio/wav" hidden onChange={handleInstInput} />
           </label>
         </div>
       </div>
@@ -67,13 +67,13 @@ function TakeUpload({ onFiles, onInstFiles, error, progress }: Props): React.JSX
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        여기로 WAV 파일을 드래그하세요
+        Drop WAV files here
       </div>
 
       {progress && (
         <div className="take-upload__progress">
           <div className="take-upload__progress-info">
-            <span>처리 중…</span>
+            <span>Loading…</span>
             <span>
               {progress.done} / {progress.total}
             </span>
