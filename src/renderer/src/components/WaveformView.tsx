@@ -15,9 +15,12 @@ const GUTTER = 190 // 트랙 레인 헤더(이름·메타·삭제) 폭(px)
 const ROW_GAP = 8 // 라벨-플롯 사이 간격(css .waveform__row gap)
 const PLOT_LEFT = GUTTER + ROW_GAP // 파형 실제 시작 x (재생헤드·눈금·클릭 기준)
 
-// 시간 눈금 간격: 화면에 ~12개 이하로 떨어지게 고른다.
-function niceStep(dur: number): number {
-  for (const c of [5, 10, 15, 30, 60, 120, 300]) if (dur / c <= 12) return c
+// 시간 눈금 간격: 픽셀 밀도(pxPerSec) 기준으로 라벨이 ~80px 이상 벌어지는 최소 간격.
+// 가로 확대하면 pxPerSec가 커져 간격이 초 단위까지 촘촘해진다.
+function niceStep(pxPerSec: number): number {
+  if (pxPerSec <= 0) return 60
+  const target = 80 / pxPerSec // ~80px당 몇 초
+  for (const c of [1, 2, 5, 10, 15, 30, 60, 120, 300, 600]) if (c >= target) return c
   return 600
 }
 
@@ -258,7 +261,7 @@ function WaveformView({
     return out
   }, [regions, pxPerSec])
   const ticks: number[] = []
-  const step = niceStep(maxDuration)
+  const step = niceStep(pxPerSec)
   for (let t = 0; t <= maxDuration; t += step) ticks.push(t)
 
   return (
@@ -299,11 +302,13 @@ function WaveformView({
         <div className="waveform__scroll">
           {pxPerSec > 0 && (
             <div className="waveform__rulers">
-              <div
-                className="waveform__regionbar"
-                style={{ marginLeft: PLOT_LEFT, width: timelineWidth }}
-                onMouseDown={beginCreate}
-              >
+              <div className="waveform__ruler-strip">
+                <div className="waveform__ruler-gutter" />
+                <div
+                  className="waveform__regionbar"
+                  style={{ width: timelineWidth }}
+                  onMouseDown={beginCreate}
+                >
                 {createRange && (
                   <div
                     className="waveform__region-preview"
@@ -344,13 +349,17 @@ function WaveformView({
                     </div>
                   )
                 })}
+                </div>
               </div>
-              <div className="waveform__ticks" style={{ marginLeft: PLOT_LEFT, width: timelineWidth }}>
-                {ticks.map((t) => (
-                  <span key={t} style={{ left: t * pxPerSec }}>
-                    {secToMMSS(t)}
-                  </span>
-                ))}
+              <div className="waveform__ruler-strip">
+                <div className="waveform__ruler-gutter" />
+                <div className="waveform__ticks" style={{ width: timelineWidth }}>
+                  {ticks.map((t) => (
+                    <span key={t} style={{ left: t * pxPerSec }}>
+                      {secToMMSS(t)}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           )}

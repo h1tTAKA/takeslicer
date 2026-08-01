@@ -244,6 +244,22 @@ body {
   overflow-x: auto; /* 가로 확대 시 스크롤 */
 }
 
+/* 눈금/구간바 왼쪽 sticky 거터 — 스크롤 시 헤더 칸으로 삐져나옴 방지(레인헤드와 동일 폭) */
+.waveform__ruler-strip {
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+}
+
+.waveform__ruler-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  width: 198px;
+  flex-shrink: 0;
+  background-color: var(--color-background);
+}
+
 .waveform__time {
   margin-left: auto;
   margin-right: 12px;
