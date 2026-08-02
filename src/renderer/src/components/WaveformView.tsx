@@ -201,6 +201,9 @@ function WaveformView({
       moveLo = prev ? prev.start + MIN_LEN : 0
       moveHi = (next ? next.end - MIN_LEN : bound) - len
     }
+    // 인접 구간이 둘 다 MIN_LEN 미만이면 lo>hi로 역전될 수 있음 → 클램프가 정의되게 hi를 lo 아래로 안 내림(그 자리 고정).
+    if (hi < lo) hi = lo
+    if (moveHi < moveLo) moveHi = moveLo
     dragRef.current = { mode, id: r.id, x0: e.clientX, s0: r.start, e0: r.end, link, lo, hi, prevId, nextId, moveLo, moveHi }
     window.addEventListener('mousemove', handlersRef.current!.move)
     window.addEventListener('mouseup', handlersRef.current!.up)
