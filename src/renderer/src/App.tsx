@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import RegionForm from './components/RegionForm'
 import TakeUpload from './components/TakeUpload'
 import WaveformView from './components/WaveformView'
@@ -14,7 +14,7 @@ function App(): React.JSX.Element {
   const [takes, setTakes] = useState<TakeFile[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  // 렌더 설정(캘리브레이션 노브). 다음 렌더 이슈에서 실제 파일 생성에 사용.
+  // Render(캘리브레이션 노브). 다음 렌더 이슈에서 실제 파일 생성에 사용.
   const [config, setConfig] = useState<RenderConfig>({ rmsThreshold: 0.02, minActiveMs: 120, tailSec: 2 })
   // 인스트(반주) 레퍼런스 트랙 — takes(슬라이스 대상)와 분리. 재생·구간 잡기용.
   const [instTake, setInstTake] = useState<TakeFile | null>(null)
@@ -26,7 +26,7 @@ function App(): React.JSX.Element {
     try {
       setInstTake(await decodeWavFile(wav))
     } catch (e) {
-      setLoadError(`인스트: ${(e as Error).message}`)
+      setLoadError(`Inst: ${(e as Error).message}`)
     }
   }
   const removeInst = (): void => {
@@ -41,7 +41,7 @@ function App(): React.JSX.Element {
     setLoadError(null)
     const wavs = files.filter(isWavFile)
     if (files.length > 0 && wavs.length === 0) {
-      setLoadError('WAV 파일이 없습니다')
+      setLoadError('No WAV files')
       return
     }
     setProgress({ done: 0, total: wavs.length })
@@ -67,7 +67,7 @@ function App(): React.JSX.Element {
       setProgress({ done: i + 1, total: wavs.length })
     }
     setProgress(null)
-    if (skipped > 0) errs.unshift(`${skipped}개는 이미 로드되어 건너뜀`)
+    if (skipped > 0) errs.unshift(`${skipped} already loaded, skipped`)
     if (errs.length > 0) setLoadError(errs.join(' / '))
   }
 
@@ -86,27 +86,34 @@ function App(): React.JSX.Element {
 
   const removeRegion = (id: string): void => setRegions((rs) => rs.filter((r) => r.id !== id))
 
+  // 빈 타임라인 드래그로 새 구간 생성(이름은 폼에서 입력).
+  const addRegionAt = (start: number, end: number): void =>
+    setRegions((rs) => [...rs, { id: crypto.randomUUID(), name: '', start, end }])
+
+  // 스페이스바 = 인스트 재생/일시정지 (입력칸 포커스 중엔 무시).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.code !== 'Space' || !instTake) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      e.preventDefault()
+      pb.toggle(instTake.audioBuffer)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [instTake, pb])
+
   return (
     <div className="app">
       <h1>takeslicer</h1>
+      <TakeUpload onFiles={addTakes} onInstFiles={addInst} error={loadError} progress={progress} />
       <RegionForm
         regions={regions}
         onAdd={addRegion}
         onUpdate={updateRegion}
         onRemove={removeRegion}
-      />
-      <TakeUpload
-        takes={takes}
-        onFiles={addTakes}
-        onRemove={removeTake}
-        error={loadError}
-        progress={progress}
-        instTake={instTake}
-        onInstFiles={addInst}
-        onInstRemove={removeInst}
-        instPlaying={pb.isPlaying}
-        onInstToggle={() => instTake && pb.toggle(instTake.audioBuffer)}
-        onInstStop={() => pb.stop()}
+        canEdit={instTake !== null}
+        songLength={instTake?.duration ?? 0}
       />
       <WaveformView
         regions={regions}
@@ -114,6 +121,15 @@ function App(): React.JSX.Element {
         instTake={instTake}
         currentTime={pb.currentTime}
         onSeek={(sec) => pb.seek(sec, instTake?.audioBuffer)}
+        onRegionUpdate={updateRegion}
+        onRegionCreate={addRegionAt}
+        songLength={instTake?.duration ?? 0}
+        onTakeRemove={removeTake}
+        instPlaying={pb.isPlaying}
+        onInstToggle={() => instTake && pb.toggle(instTake.audioBuffer)}
+        onInstStop={() => pb.stop()}
+        onInstRemove={removeInst}
+        config={config}
       />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
     </div>

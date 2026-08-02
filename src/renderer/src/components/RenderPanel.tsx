@@ -11,7 +11,7 @@ interface Props {
   onConfigChange: (cfg: RenderConfig) => void
 }
 
-// 렌더 설정 슬라이더(rms/minActive/tail) + 각 구간에 "소리 있는 트랙 수" 미리보기.
+// Render 슬라이더(rms/minActive/tail) + 각 구간에 "소리 있는 트랙 수" 미리보기.
 // 미리보기는 detect를 stride로 근사(빠름) + 150ms 디바운스(슬라이더 튈 때마다 재계산 방지).
 function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.JSX.Element {
   const set = (patch: Partial<RenderConfig>): void => onConfigChange({ ...config, ...patch })
@@ -41,17 +41,17 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
       if (summary.written === 0) {
         setResult(
           zip && summary.zipPath === null
-            ? '저장 취소됨'
-            : '뽑을 게 없습니다 (구간·트랙·임계값 확인)'
+            ? 'Canceled'
+            : 'Nothing to export (check sections/tracks/threshold)'
         )
       } else if (zip) {
-        setResult(`${summary.written}개 → ${summary.zipPath}`)
+        setResult(`${summary.written} files → ${summary.zipPath}`)
       } else {
-        setResult(`${summary.written}개 저장됨 (${summary.regions}개 구간)`)
+        setResult(`${summary.written} files saved (${summary.regions} sections)`)
         if (outDir) await window.api.openPath(outDir)
       }
     } catch (e) {
-      setResult(`오류: ${(e as Error).message}`)
+      setResult(`Error: ${(e as Error).message}`)
     } finally {
       setRendering(null)
     }
@@ -72,16 +72,16 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
         const stride = Math.max(1, Math.floor(t.audioBuffer.sampleRate / 2000)) // 미리보기 근사
         if (detectRegion(t.audioBuffer, r.start, r.end, debCfg, stride).active) n++
       }
-      return { id: r.id, name: r.name || '(이름없음)', n }
+      return { id: r.id, name: r.name || '(unnamed)', n }
     })
   }, [regions, takes, debCfg])
 
   return (
     <div className="render-panel">
-      <h2>렌더 설정</h2>
+      <h2>Render</h2>
       <div className="render-panel__knobs">
         <label>
-          <span>무음 임계값</span>
+          <span>Silence threshold</span>
           <input
             type="range"
             min={0}
@@ -93,7 +93,7 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
           <span className="render-panel__val">{config.rmsThreshold.toFixed(3)}</span>
         </label>
         <label>
-          <span>최소 소리길이</span>
+          <span>Min length</span>
           <input
             type="range"
             min={0}
@@ -105,7 +105,7 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
           <span className="render-panel__val">{config.minActiveMs}ms</span>
         </label>
         <label>
-          <span>꼬리 여유</span>
+          <span>Tail</span>
           <input
             type="range"
             min={0}
@@ -120,7 +120,7 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
 
       {takes.length > 0 && counts.length > 0 && (
         <div className="render-panel__preview">
-          <span className="render-panel__preview-title">이 설정으로 뽑힐 트랙</span>
+          <span className="render-panel__preview-title">Will export</span>
           {counts.map((c) => (
             <span key={c.id} className="render-panel__chip">
               {c.name} <b>{c.n}</b>
@@ -132,10 +132,10 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
       <div className="render-panel__run">
         <button className="render-panel__folder" onClick={pickFolder} disabled={zip}>
           <IconFolder size={16} stroke={2} />
-          출력 폴더
+          Output
         </button>
         <span className="render-panel__path" title={outDir ?? ''}>
-          {zip ? 'zip으로 저장' : (outDir ?? '폴더를 선택하세요')}
+          {zip ? 'Save as zip' : (outDir ?? 'Choose a folder')}
         </span>
         <label className="render-panel__zip">
           <input type="checkbox" checked={zip} onChange={(e) => setZip(e.target.checked)} />
@@ -146,7 +146,7 @@ function RenderPanel({ regions, takes, config, onConfigChange }: Props): React.J
           onClick={doRender}
           disabled={(!zip && !outDir) || takes.length === 0 || rendering !== null}
         >
-          {rendering ? `렌더 중… ${rendering.done}/${rendering.total}` : '렌더 시작'}
+          {rendering ? `Rendering… ${rendering.done}/${rendering.total}` : 'Render'}
         </button>
       </div>
       {result && <p className="render-panel__result">{result}</p>}
