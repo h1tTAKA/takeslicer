@@ -3,7 +3,7 @@
 function Logo(): React.JSX.Element {
   return (
     <h1 className="logo">
-      <svg className="logo__mark" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-label="takeslicer">
+      <svg className="logo__mark" width="36" height="36" viewBox="0 0 40 40" fill="none" aria-label="takeslicer">
         <defs>
           <linearGradient id="ts-wave" x1="0" y1="8" x2="0" y2="32" gradientUnits="userSpaceOnUse">
             <stop offset="0" stopColor="#8affca" />
@@ -27,7 +27,9 @@ function Logo(): React.JSX.Element {
           transform="translate(17 -2)"
         />
       </svg>
-      <span className="logo__word">takeslicer</span>
+      <span className="logo__word">
+        <span className="logo__word-take">take</span>slicer
+      </span>
     </h1>
   )
 }
