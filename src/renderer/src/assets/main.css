@@ -721,7 +721,7 @@ body {
 .logo__word-take {
   font-weight: 600;
   /* 오른쪽(아이콘 쪽)에서 조명 때리는 느낌 — 왼쪽 어둡게 → 오른쪽 밝게 */
-  background: linear-gradient(90deg, rgba(226, 232, 240, 0.26) 0%, rgba(226, 232, 240, 0.82) 100%);
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.5) 0%, rgba(226, 232, 240, 0.92) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
