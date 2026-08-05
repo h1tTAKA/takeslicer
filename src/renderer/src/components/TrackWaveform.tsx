@@ -27,7 +27,7 @@ function TrackWaveform({
   width,
   height,
   marks,
-  color = '#6988e6',
+  color = '#6b8cff',
   threshold,
   viewStart,
   viewEnd
