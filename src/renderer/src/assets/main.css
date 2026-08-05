@@ -705,20 +705,26 @@ body {
    Neon Plugin 테마 (issue #17) — 아래 규칙이 위 기본값을 덮어씀
    ============================================================ */
 
-/* 헤더 */
-.app h1 {
-  letter-spacing: -0.02em;
+/* 헤더 로고(마크 + 워드마크) */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 24px;
 }
-.app h1::after {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-left: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
-  vertical-align: middle;
+.logo__mark {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 10px rgba(59, 227, 139, 0.28));
+}
+.logo__word {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--text-1);
+}
+.logo__word-take {
+  color: var(--text-3);
+  font-weight: 600;
 }
 
 /* 패널 카드화 */
