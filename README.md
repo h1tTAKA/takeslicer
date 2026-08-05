@@ -13,6 +13,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-3be38b.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-macOS%20·%20Windows%20·%20Linux-2a2f3a)
 
+<br/>
+
+**English** · [한국어](README.ko.md) · [日本語](README.ja.md)
+
 </div>
 
 ---
@@ -83,5 +87,5 @@ npm run build:linux   # Linux
 [MIT](LICENSE)
 
 <div align="center">
-<sub>Built for producers who'd rather be comping than cutting.</sub>
+<sub>Built for producers who burn out organizing scattered recording tracks before they even get to comp.</sub>
 </div>
