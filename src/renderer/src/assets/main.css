@@ -704,7 +704,7 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 3px;
   margin: 0 0 26px;
 }
 .logo__mark {

@@ -28,7 +28,7 @@ function Logo(): React.JSX.Element {
         />
       </svg>
       <span className="logo__word">
-        <span className="logo__word-take">take</span>slicer
+        <span className="logo__word-take">take</span>Slicer
       </span>
     </h1>
   )
