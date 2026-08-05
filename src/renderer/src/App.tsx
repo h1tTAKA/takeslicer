@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Logo from './components/Logo'
 import RegionForm from './components/RegionForm'
 import TakeUpload from './components/TakeUpload'
 import WaveformView from './components/WaveformView'
@@ -105,7 +106,7 @@ function App(): React.JSX.Element {
 
   return (
     <div className="app">
-      <h1>takeslicer</h1>
+      <Logo />
       <TakeUpload onFiles={addTakes} onInstFiles={addInst} error={loadError} progress={progress} />
       <RegionForm
         regions={regions}

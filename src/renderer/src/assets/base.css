@@ -1,34 +1,54 @@
 :root {
+  /* ===== Neon Plugin 팔레트 (issue #17) ===== */
+  --bg: #08090c; /* 앱 캔버스 */
+  --surface: #111318; /* 패널/카드 */
+  --surface-2: #171a21; /* 인풋·플롯·엘리베이티드 */
+  --surface-3: #1e222b; /* hover */
+  --border: #2a2f3a;
+  --border-strong: #3a4150;
+
+  --accent: #3be38b; /* 네온 그린 */
+  --accent-dim: #2fb870; /* hover/pressed */
+  --accent-ink: #05130b; /* 액센트 위 글자 */
+  --accent-glow: rgba(59, 227, 139, 0.35);
+  --accent-tint: rgba(59, 227, 139, 0.06);
+
+  --blue: #6b8cff; /* 보조(테이크 파형 등) */
+  --danger: #ff5a5f;
+
+  --text-1: rgba(255, 255, 255, 0.94);
+  --text-2: rgba(226, 232, 240, 0.6);
+  --text-3: rgba(226, 232, 240, 0.38);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  /* 기존 electron-vite 토큰을 새 팔레트에 매핑 → 참조하는 CSS가 전부 자동 리테마 */
   --ev-c-white: #ffffff;
-  --ev-c-white-soft: #f8f8f8;
-  --ev-c-white-mute: #f2f2f2;
+  --ev-c-black: var(--bg);
+  --ev-c-black-soft: var(--surface);
+  --ev-c-black-mute: var(--surface-2);
 
-  --ev-c-black: #1b1b1f;
-  --ev-c-black-soft: #222222;
-  --ev-c-black-mute: #282828;
+  --ev-c-gray-1: var(--border);
+  --ev-c-gray-2: var(--border-strong);
+  --ev-c-gray-3: var(--surface-3);
 
-  --ev-c-gray-1: #515c67;
-  --ev-c-gray-2: #414853;
-  --ev-c-gray-3: #32363f;
+  --ev-c-text-1: var(--text-1);
+  --ev-c-text-2: var(--text-2);
+  --ev-c-text-3: var(--text-3);
 
-  --ev-c-text-1: rgba(255, 255, 245, 0.86);
-  --ev-c-text-2: rgba(235, 235, 245, 0.6);
-  --ev-c-text-3: rgba(235, 235, 245, 0.38);
+  --ev-button-alt-border: var(--border);
+  --ev-button-alt-text: var(--text-1);
+  --ev-button-alt-bg: var(--surface-2);
+  --ev-button-alt-hover-border: var(--border-strong);
+  --ev-button-alt-hover-text: var(--text-1);
+  --ev-button-alt-hover-bg: var(--surface-3);
 
-  --ev-button-alt-border: transparent;
-  --ev-button-alt-text: var(--ev-c-text-1);
-  --ev-button-alt-bg: var(--ev-c-gray-3);
-  --ev-button-alt-hover-border: transparent;
-  --ev-button-alt-hover-text: var(--ev-c-text-1);
-  --ev-button-alt-hover-bg: var(--ev-c-gray-2);
-}
-
-:root {
-  --color-background: var(--ev-c-black);
-  --color-background-soft: var(--ev-c-black-soft);
-  --color-background-mute: var(--ev-c-black-mute);
-
-  --color-text: var(--ev-c-text-1);
+  --color-background: var(--bg);
+  --color-background-soft: var(--surface);
+  --color-background-mute: var(--surface-2);
+  --color-text: var(--text-1);
 }
 
 *,
@@ -46,7 +66,10 @@ ul {
 body {
   min-height: 100vh;
   color: var(--color-text);
-  background: var(--color-background);
+  /* 위쪽에서 은은하게 퍼지는 네온 앰비언스 */
+  background:
+    radial-gradient(1200px 620px at 50% -12%, var(--accent-tint), transparent 70%),
+    var(--bg);
   line-height: 1.6;
   font-family:
     Inter,
@@ -64,4 +87,24 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 얇은 프로 스크롤바 */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }

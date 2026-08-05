@@ -23,6 +23,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@fontsource/chakra-petch": "^5.3.0",
     "@tabler/icons-react": "^3.45.0",
     "jszip": "^3.10.1",
     "wavesurfer.js": "^7.12.11"

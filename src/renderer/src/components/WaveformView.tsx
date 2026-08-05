@@ -411,7 +411,7 @@ function WaveformView({
                 </div>
                 <div className="waveform__plot" style={{ width: instTake.duration * pxPerSec, height: rowH }}>
                   {pxPerSec > 0 && (
-                    <TrackWaveform buffer={instTake.audioBuffer} width={instTake.duration * pxPerSec} height={rowH} marks={regionMarks} color="#4a9d6a" viewStart={viewStart} viewEnd={viewEnd} />
+                    <TrackWaveform buffer={instTake.audioBuffer} width={instTake.duration * pxPerSec} height={rowH} marks={regionMarks} color="#3be38b" viewStart={viewStart} viewEnd={viewEnd} />
                   )}
                 </div>
               </div>

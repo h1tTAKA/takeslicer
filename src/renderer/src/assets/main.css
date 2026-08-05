@@ -12,12 +12,7 @@ body {
   margin-top: 36px;
 }
 
-.app h1 {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 24px;
-  color: var(--ev-c-text-1);
-}
+/* 헤더 제목은 .logo(h1)에서 스타일링 — 네온 테마 블록 참고 */
 
 /* 구간 폼 */
 .region-form__header {
@@ -699,4 +694,231 @@ body {
 
 .take-row__del:hover {
   background-color: var(--ev-button-alt-hover-bg);
+}
+
+/* ============================================================
+   Neon Plugin 테마 (issue #17) — 아래 규칙이 위 기본값을 덮어씀
+   ============================================================ */
+
+/* 헤더 로고 — 아이콘 + 워드마크 가로 락업(살짝 띄워 하나처럼) */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 26px;
+}
+.logo__mark {
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 11px rgba(59, 227, 139, 0.3));
+}
+.logo__word {
+  font-family: 'Chakra Petch', var(--font-mono);
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+}
+.logo__word-take {
+  font-weight: 600;
+  /* 오른쪽(아이콘 쪽)에서 조명 때리는 느낌 — 왼쪽 어둡게 → 오른쪽 밝게 */
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.5) 0%, rgba(226, 232, 240, 0.92) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 패널 카드화 */
+.region-form,
+.take-upload,
+.waveform,
+.render-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+
+/* 섹션 라벨: 작은 대문자 트래킹 */
+.region-form__header h2,
+.take-upload__header h2,
+.waveform h2,
+.render-panel h2 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+/* 모노 숫자(시간·메타·값) */
+.waveform__lane-meta,
+.waveform__ticks span,
+.take-row__meta,
+.render-panel__val,
+.render-panel__chip,
+.take-upload__progress-info {
+  font-family: var(--font-mono);
+}
+.waveform__time {
+  font-family: var(--font-mono);
+  color: var(--danger);
+  text-shadow: 0 0 8px rgba(255, 90, 95, 0.4);
+}
+
+/* 커스텀 슬라이더 — 스톡 → 네온 */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow:
+    0 0 0 1px var(--accent-dim),
+    0 0 10px var(--accent-glow);
+}
+input[type='range']::-webkit-slider-thumb:hover {
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 16px var(--accent-glow);
+}
+input[type='range']::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* 인풋 포커스 링 */
+.region-row input {
+  background: var(--surface-2);
+  border-color: var(--border);
+  border-radius: var(--radius-sm);
+}
+.region-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  outline: none;
+}
+
+/* 고스트 버튼 hover 액센트 보더 */
+.region-form__add,
+.take-upload__btn,
+.render-panel__folder {
+  border-radius: var(--radius-sm);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.region-form__add:hover,
+.take-upload__btn:hover,
+.render-panel__folder:hover {
+  border-color: var(--border-strong);
+}
+
+/* 프라이머리 버튼(Render) — 액센트 글로우 */
+.render-panel__go {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius-sm);
+  box-shadow:
+    inset 0 0 0 1px var(--accent-dim),
+    0 6px 22px -8px var(--accent-glow);
+  transition:
+    filter 120ms ease,
+    box-shadow 120ms ease;
+}
+.render-panel__go:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 8px 30px -6px var(--accent-glow);
+}
+
+/* 재생 버튼 — 액센트 + 글로우 */
+.take-upload__play,
+.waveform__lane-play {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.take-upload__play:hover,
+.waveform__lane-play:hover {
+  filter: brightness(1.08);
+}
+
+/* 아이콘 버튼 hover */
+.waveform__lane-del:hover,
+.waveform__lane-stop:hover,
+.region-row__del:hover {
+  border-color: var(--border-strong);
+  color: var(--text-1);
+  background-color: var(--surface-3);
+}
+
+/* 인스트 = 액센트 톤 */
+.waveform__row--inst .waveform__lane-name {
+  color: var(--accent);
+}
+.waveform__row--inst .waveform__plot {
+  outline-color: var(--accent-glow);
+}
+.take-upload__inst {
+  border-color: rgba(59, 227, 139, 0.45);
+  background: var(--accent-tint);
+  border-radius: var(--radius-sm);
+}
+.take-upload__inst-tag {
+  color: var(--accent);
+  border-color: rgba(59, 227, 139, 0.45);
+}
+
+/* 진행바·드롭·칩 액센트 */
+.take-upload__progress-fill {
+  background: var(--accent);
+}
+.take-upload__drop {
+  border-color: var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.take-upload__drop--over {
+  border-color: var(--accent);
+  color: var(--text-1);
+  background: var(--accent-tint);
+}
+.render-panel__chip {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+.render-panel__chip b {
+  color: var(--accent);
+}
+
+/* 스택 타임라인 — 카드 톤에 맞춤 */
+.waveform__lanehead,
+.waveform__ruler-gutter {
+  background: var(--surface);
+}
+.waveform__plot {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+.take-row {
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
 }
