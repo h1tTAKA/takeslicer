@@ -76,6 +76,7 @@ function createWindow(): void {
     width: 900,
     height: 670,
     show: false,
+    title: 'takeSlicer',
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -106,8 +107,10 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  // 앱 이름/식별자 + macOS dock 아이콘(개발 중에도 로고 보이게)
+  app.setName('takeSlicer')
+  electronApp.setAppUserModelId('com.neuradex.takeslicer')
+  if (process.platform === 'darwin' && app.dock) app.dock.setIcon(icon)
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
