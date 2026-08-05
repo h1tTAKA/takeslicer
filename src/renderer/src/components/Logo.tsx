@@ -2,8 +2,8 @@
 // 왼쪽 아이콘 + 오른쪽 워드마크 락업. 순수 인라인 SVG(의존성 0).
 function Logo(): React.JSX.Element {
   return (
-    <div className="logo">
-      <svg className="logo__mark" width="34" height="34" viewBox="0 0 40 40" fill="none" aria-label="takeslicer">
+    <h1 className="logo">
+      <svg className="logo__mark" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-label="takeslicer">
         <defs>
           <linearGradient id="ts-wave" x1="0" y1="8" x2="0" y2="32" gradientUnits="userSpaceOnUse">
             <stop offset="0" stopColor="#8affca" />
@@ -27,10 +27,8 @@ function Logo(): React.JSX.Element {
           transform="translate(17 -2)"
         />
       </svg>
-      <span className="logo__word">
-        <span className="logo__word-take">take</span>slicer
-      </span>
-    </div>
+      <span className="logo__word">takeslicer</span>
+    </h1>
   )
 }
 

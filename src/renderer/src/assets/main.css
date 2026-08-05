@@ -12,12 +12,7 @@ body {
   margin-top: 36px;
 }
 
-.app h1 {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 24px;
-  color: var(--ev-c-text-1);
-}
+/* 헤더 제목은 .logo(h1)에서 스타일링 — 네온 테마 블록 참고 */
 
 /* 구간 폼 */
 .region-form__header {
@@ -705,26 +700,22 @@ body {
    Neon Plugin 테마 (issue #17) — 아래 규칙이 위 기본값을 덮어씀
    ============================================================ */
 
-/* 헤더 로고(마크 + 워드마크) */
+/* 헤더 로고 — 아이콘 위, 워드마크 아래(세로 스택, 좌측 정렬) */
 .logo {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 26px;
 }
 .logo__mark {
-  flex-shrink: 0;
-  filter: drop-shadow(0 0 10px rgba(59, 227, 139, 0.28));
+  filter: drop-shadow(0 0 11px rgba(59, 227, 139, 0.3));
 }
 .logo__word {
   font-size: 23px;
   font-weight: 700;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.02em;
   color: var(--text-1);
-}
-.logo__word-take {
-  color: var(--text-3);
-  font-weight: 600;
 }
 
 /* 패널 카드화 */

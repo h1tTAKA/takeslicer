@@ -68,7 +68,7 @@ body {
   color: var(--color-text);
   /* 위쪽에서 은은하게 퍼지는 네온 앰비언스 */
   background:
-    radial-gradient(1200px 620px at 50% -12%, rgba(59, 227, 139, 0.06), transparent 70%),
+    radial-gradient(1200px 620px at 50% -12%, var(--accent-tint), transparent 70%),
     var(--bg);
   line-height: 1.6;
   font-family:
