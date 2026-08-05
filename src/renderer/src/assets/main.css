@@ -704,7 +704,7 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   margin: 0 0 26px;
 }
 .logo__mark {
@@ -712,9 +712,10 @@ body {
   filter: drop-shadow(0 0 11px rgba(59, 227, 139, 0.3));
 }
 .logo__word {
+  font-family: 'Chakra Petch', var(--font-mono);
   font-size: 23px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--text-1);
 }
 .logo__word-take {
