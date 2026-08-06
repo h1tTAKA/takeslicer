@@ -6,6 +6,7 @@ import WaveformView from './components/WaveformView'
 import RenderPanel from './components/RenderPanel'
 import { Region, TakeFile, RenderConfig } from './types'
 import { decodeWavFile, isWavFile } from './audio/decode'
+import { buildProjectJSON, parseProject, loadProjectAudio } from './project'
 import { usePlayback } from './hooks/usePlayback'
 
 function App(): React.JSX.Element {
@@ -94,6 +95,37 @@ function App(): React.JSX.Element {
   const addRegionAt = (start: number, end: number): void =>
     setRegions((rs) => [...rs, { id: crypto.randomUUID(), name: '', start, end }])
 
+  const hasWork = regions.length > 0 || takes.length > 0 || instTake !== null
+
+  // 프로젝트 저장 — 구간/설정/트랙 경로를 .tslicer로. 경로 없는 트랙은 제외(경고).
+  const saveProject = async (): Promise<void> => {
+    const { json, skipped } = buildProjectJSON(config, regions, instTake, takes)
+    const path = await window.api.saveProject(json)
+    setLoadError(
+      path && skipped.length > 0
+        ? `저장됨 — 경로 없는 트랙 ${skipped.length}개 제외: ${skipped.join(', ')}`
+        : null
+    )
+  }
+
+  // 프로젝트 열기 — 구간/설정 복원 + 경로에서 트랙 재로드. 없는 파일은 경고.
+  const openProject = async (): Promise<void> => {
+    const r = await window.api.openProject()
+    if (!r) return
+    try {
+      const p = parseProject(r.json)
+      const { inst, takes: loaded, missing } = await loadProjectAudio(p)
+      pb.stop()
+      setRegions(p.regions)
+      setConfig(p.config)
+      setInstTake(inst)
+      setTakes(loaded)
+      setLoadError(missing.length > 0 ? `불러오지 못한 트랙(이동/삭제): ${missing.join(', ')}` : null)
+    } catch (e) {
+      setLoadError(`프로젝트 열기 실패: ${(e as Error).message}`)
+    }
+  }
+
   // 스페이스바 = 인스트 재생/일시정지 (입력칸 포커스 중엔 무시).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -109,7 +141,17 @@ function App(): React.JSX.Element {
 
   return (
     <div className="app">
-      <Logo />
+      <div className="app__top">
+        <Logo />
+        <div className="app__actions">
+          <button className="app__btn" onClick={openProject}>
+            Open
+          </button>
+          <button className="app__btn app__btn--primary" onClick={saveProject} disabled={!hasWork}>
+            Save
+          </button>
+        </div>
+      </div>
       <TakeUpload onFiles={addTakes} onInstFiles={addInst} error={loadError} progress={progress} />
       <RegionForm
         regions={regions}
