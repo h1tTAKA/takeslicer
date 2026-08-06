@@ -81,8 +81,12 @@ function registerRenderIpc(): void {
       filters: [{ name: 'takeSlicer project', extensions: ['tslicer'] }]
     })
     if (r.canceled || !r.filePath) return null
-    await writeFile(r.filePath, json, 'utf8')
-    return r.filePath
+    try {
+      await writeFile(r.filePath, json, 'utf8')
+      return r.filePath
+    } catch {
+      return null // 쓰기 실패가 렌더러로 reject 안 나가게(닫기 모달 스턱 방지)
+    }
   })
 
   // 프로젝트 열기 — 파일 선택 후 JSON 문자열 반환.
@@ -118,7 +122,7 @@ function registerRenderIpc(): void {
   })
   ipcMain.on('do-quit', () => {
     forceQuit = true
-    mainWindow?.close()
+    app.quit() // before-quit·close 재가로채기는 forceQuit로 통과
   })
 }
 
@@ -140,6 +144,8 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
   })
+
+  forceQuit = false // 새 창(재활성화 등)이면 종료 플래그 리셋
 
   // 미저장 변경 있으면 닫기 가로채기 → 렌더러에 확인 모달 요청.
   mainWindow.on('close', (e) => {
@@ -180,6 +186,14 @@ app.whenReady().then(() => {
   })
 
   registerRenderIpc()
+
+  // Cmd+Q(앱 종료) 시에도 미저장이면 확인(창 close만으론 quit 경로를 못 잡는 경우 대비).
+  app.on('before-quit', (e) => {
+    if (isDirty && !forceQuit && mainWindow && !mainWindow.isDestroyed()) {
+      e.preventDefault()
+      mainWindow.webContents.send('confirm-close')
+    }
+  })
 
   createWindow()
 
