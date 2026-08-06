@@ -20,6 +20,7 @@ function App(): React.JSX.Element {
   const [config, setConfig] = useState<RenderConfig>({ rmsThreshold: 0.02, minActiveMs: 120, tailSec: 2 })
   // 인스트(반주) 레퍼런스 트랙 — takes(슬라이스 대상)와 분리. 재생·구간 잡기용.
   const [instTake, setInstTake] = useState<TakeFile | null>(null)
+  const [busy, setBusy] = useState(false) // 프로젝트 로딩 중(중복 열기/저장 방지)
   const pb = usePlayback()
 
   const addInst = async (files: File[]): Promise<void> => {
@@ -110,8 +111,10 @@ function App(): React.JSX.Element {
 
   // 프로젝트 열기 — 구간/설정 복원 + 경로에서 트랙 재로드. 없는 파일은 경고.
   const openProject = async (): Promise<void> => {
+    if (busy) return
     const r = await window.api.openProject()
     if (!r) return
+    setBusy(true)
     try {
       const p = parseProject(r.json)
       const { inst, takes: loaded, missing } = await loadProjectAudio(p)
@@ -123,6 +126,8 @@ function App(): React.JSX.Element {
       setLoadError(missing.length > 0 ? `불러오지 못한 트랙(이동/삭제): ${missing.join(', ')}` : null)
     } catch (e) {
       setLoadError(`프로젝트 열기 실패: ${(e as Error).message}`)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -144,10 +149,14 @@ function App(): React.JSX.Element {
       <div className="app__top">
         <Logo />
         <div className="app__actions">
-          <button className="app__btn" onClick={openProject}>
-            Open
+          <button className="app__btn" onClick={openProject} disabled={busy}>
+            {busy ? 'Opening…' : 'Open'}
           </button>
-          <button className="app__btn app__btn--primary" onClick={saveProject} disabled={!hasWork}>
+          <button
+            className="app__btn app__btn--primary"
+            onClick={saveProject}
+            disabled={!hasWork || busy}
+          >
             Save
           </button>
         </div>

@@ -48,12 +48,28 @@ export function buildProjectJSON(
   return { json: JSON.stringify(project, null, 2), skipped }
 }
 
-// JSON 파싱 + 최소 검증.
+// JSON 파싱 + 검증. config 필드·트랙 ref 형태까지 확인(깨진 파일이 뒤에서 크래시 나지 않게).
 export function parseProject(json: string): ProjectFile {
   const p = JSON.parse(json)
-  if (!p || typeof p !== 'object' || !Array.isArray(p.regions) || !Array.isArray(p.takes)) {
-    throw new Error('잘못된 프로젝트 파일')
-  }
+  const isRef = (x: unknown): boolean =>
+    !!x &&
+    typeof x === 'object' &&
+    typeof (x as Ref).path === 'string' &&
+    typeof (x as Ref).name === 'string'
+  const c = p?.config
+  const ok =
+    p &&
+    typeof p === 'object' &&
+    c &&
+    typeof c === 'object' &&
+    typeof c.rmsThreshold === 'number' &&
+    typeof c.minActiveMs === 'number' &&
+    typeof c.tailSec === 'number' &&
+    Array.isArray(p.regions) &&
+    Array.isArray(p.takes) &&
+    p.takes.every(isRef) &&
+    (p.inst === null || isRef(p.inst))
+  if (!ok) throw new Error('잘못된 프로젝트 파일')
   return p as ProjectFile
 }
 

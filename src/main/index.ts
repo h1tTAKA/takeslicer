@@ -88,12 +88,18 @@ function registerRenderIpc(): void {
     })
     if (r.canceled || r.filePaths.length === 0) return null
     const p = r.filePaths[0]
-    return { path: p, json: await readFile(p, 'utf8') }
+    try {
+      return { path: p, json: await readFile(p, 'utf8') }
+    } catch {
+      return null // 읽기 실패(권한/삭제 등) — 렌더러로 reject 안 나가게
+    }
   })
 
-  // 프로젝트가 참조하는 원본 WAV 바이트 읽기(재디코드용). 없거나 파일 아니면 null.
+  // 프로젝트가 참조하는 원본 WAV 바이트 읽기(재디코드용).
+  // .wav만 허용 — 임의 파일 읽기 축소(프로젝트 파일 공유 시 방어). 없/비파일/실패 null.
   ipcMain.handle('read-file', async (_e, p: string): Promise<Uint8Array | null> => {
     try {
+      if (!/\.wav$/i.test(p)) return null
       if (!(await stat(p)).isFile()) return null
       return new Uint8Array(await readFile(p))
     } catch {
