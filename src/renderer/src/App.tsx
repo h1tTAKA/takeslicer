@@ -25,7 +25,9 @@ function App(): React.JSX.Element {
     const wav = files.filter(isWavFile)[0]
     if (!wav) return
     try {
-      setInstTake(await decodeWavFile(wav))
+      const t = await decodeWavFile(wav)
+      t.path = window.api.getPathForFile(wav) || undefined // 프로젝트 저장/재로드용 원본 경로
+      setInstTake(t)
     } catch (e) {
       setLoadError(`Inst: ${(e as Error).message}`)
     }
@@ -59,6 +61,7 @@ function App(): React.JSX.Element {
       }
       try {
         const take = await decodeWavFile(wavs[i])
+        take.path = window.api.getPathForFile(wavs[i]) || undefined // 프로젝트 저장/재로드용 원본 경로
         seen.add(nameKey)
         // 넣는 순간 최신 목록과 한 번 더 대조 — 동시 업로드로 같은 이름이 겹쳐 들어오는 것 차단.
         setTakes((ts) => (ts.some((t) => t.name === take.name) ? ts : [...ts, take]))

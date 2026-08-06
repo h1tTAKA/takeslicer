@@ -31,4 +31,5 @@ export interface TakeFile {
   sampleRate: number // 원본 샘플레이트(Hz)
   numChannels: number // 채널 수(모노 1 / 스테레오 2)
   duration: number // 길이(초)
+  path?: string // 원본 WAV 디스크 경로(프로젝트 저장/재로드용). 디스크 파일 아니면 없음
 }
