@@ -1,6 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join, resolve, sep } from 'path'
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, writeFile, readFile, stat } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
@@ -67,6 +67,38 @@ function registerRenderIpc(): void {
   ipcMain.handle('open-path', async (_e, p: string) => {
     if (!pickedDirs.has(resolve(p))) throw new Error('허용되지 않은 경로')
     await shell.openPath(p)
+  })
+
+  // 프로젝트 저장(.tslicer JSON) — 저장 다이얼로그 후 파일 쓰기.
+  ipcMain.handle('save-project', async (_e, json: string): Promise<string | null> => {
+    const r = await dialog.showSaveDialog({
+      defaultPath: 'takeSlicer-project.tslicer',
+      filters: [{ name: 'takeSlicer project', extensions: ['tslicer'] }]
+    })
+    if (r.canceled || !r.filePath) return null
+    await writeFile(r.filePath, json, 'utf8')
+    return r.filePath
+  })
+
+  // 프로젝트 열기 — 파일 선택 후 JSON 문자열 반환.
+  ipcMain.handle('open-project', async (): Promise<{ path: string; json: string } | null> => {
+    const r = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'takeSlicer project', extensions: ['tslicer', 'json'] }]
+    })
+    if (r.canceled || r.filePaths.length === 0) return null
+    const p = r.filePaths[0]
+    return { path: p, json: await readFile(p, 'utf8') }
+  })
+
+  // 프로젝트가 참조하는 원본 WAV 바이트 읽기(재디코드용). 없거나 파일 아니면 null.
+  ipcMain.handle('read-file', async (_e, p: string): Promise<Uint8Array | null> => {
+    try {
+      if (!(await stat(p)).isFile()) return null
+      return new Uint8Array(await readFile(p))
+    } catch {
+      return null
+    }
   })
 }
 
