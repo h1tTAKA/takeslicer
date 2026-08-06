@@ -869,6 +869,13 @@ body {
 .modal__actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+}
+.modal--sm {
+  width: min(420px, 100%);
+}
+.modal__actions--spread {
+  justify-content: space-between;
 }
 
 /* 패널 카드화 */
