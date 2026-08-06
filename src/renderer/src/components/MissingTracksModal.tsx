@@ -2,13 +2,14 @@ import { MissingRef } from '../project'
 
 interface Props {
   missing: MissingRef[]
+  error?: string | null
   onReconnect: (ref: MissingRef, file: File) => void
   onClose: () => void
 }
 
 // 프로젝트 로드 시 경로 못 찾은 트랙 목록 + 파일 재지정(Locate).
 // Locate는 <input type=file>로 WAV를 골라 그 트랙 슬롯에 다시 연결한다.
-function MissingTracksModal({ missing, onReconnect, onClose }: Props): React.JSX.Element {
+function MissingTracksModal({ missing, error, onReconnect, onClose }: Props): React.JSX.Element {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -44,6 +45,7 @@ function MissingTracksModal({ missing, onReconnect, onClose }: Props): React.JSX
             </li>
           ))}
         </ul>
+        {error && <p className="modal__error">{error}</p>}
         <div className="modal__actions">
           <button className="app__btn" onClick={onClose}>
             Close
