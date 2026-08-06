@@ -727,6 +727,52 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
+/* 헤더 툴바 — 로고 + 프로젝트 저장/열기 */
+.app__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 26px;
+}
+.app__top .logo {
+  margin: 0;
+}
+.app__actions {
+  display: flex;
+  gap: 8px;
+}
+.app__btn {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-1);
+  border-radius: var(--radius-sm);
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.app__btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-3);
+}
+.app__btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+  box-shadow: 0 4px 18px -8px var(--accent-glow);
+}
+.app__btn--primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  border-color: transparent;
+}
+.app__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* 패널 카드화 */
 .region-form,
 .take-upload,

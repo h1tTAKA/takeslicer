@@ -11,6 +11,10 @@ export interface TakeslicerAPI {
   renderFiles(outDir: string, files: RenderFile[]): Promise<{ written: number }>
   saveZip(bytes: Uint8Array): Promise<string | null>
   openPath(path: string): Promise<void>
+  getPathForFile(file: File): string
+  saveProject(json: string): Promise<string | null>
+  openProject(): Promise<{ path: string; json: string } | null>
+  readFile(path: string): Promise<Uint8Array | null>
 }
 
 declare global {

@@ -6,6 +6,7 @@ import WaveformView from './components/WaveformView'
 import RenderPanel from './components/RenderPanel'
 import { Region, TakeFile, RenderConfig } from './types'
 import { decodeWavFile, isWavFile } from './audio/decode'
+import { buildProjectJSON, parseProject, loadProjectAudio } from './project'
 import { usePlayback } from './hooks/usePlayback'
 
 function App(): React.JSX.Element {
@@ -19,13 +20,16 @@ function App(): React.JSX.Element {
   const [config, setConfig] = useState<RenderConfig>({ rmsThreshold: 0.02, minActiveMs: 120, tailSec: 2 })
   // 인스트(반주) 레퍼런스 트랙 — takes(슬라이스 대상)와 분리. 재생·구간 잡기용.
   const [instTake, setInstTake] = useState<TakeFile | null>(null)
+  const [busy, setBusy] = useState(false) // 프로젝트 로딩 중(중복 열기/저장 방지)
   const pb = usePlayback()
 
   const addInst = async (files: File[]): Promise<void> => {
     const wav = files.filter(isWavFile)[0]
     if (!wav) return
     try {
-      setInstTake(await decodeWavFile(wav))
+      const t = await decodeWavFile(wav)
+      t.path = window.api.getPathForFile(wav) || undefined // 프로젝트 저장/재로드용 원본 경로
+      setInstTake(t)
     } catch (e) {
       setLoadError(`Inst: ${(e as Error).message}`)
     }
@@ -59,6 +63,7 @@ function App(): React.JSX.Element {
       }
       try {
         const take = await decodeWavFile(wavs[i])
+        take.path = window.api.getPathForFile(wavs[i]) || undefined // 프로젝트 저장/재로드용 원본 경로
         seen.add(nameKey)
         // 넣는 순간 최신 목록과 한 번 더 대조 — 동시 업로드로 같은 이름이 겹쳐 들어오는 것 차단.
         setTakes((ts) => (ts.some((t) => t.name === take.name) ? ts : [...ts, take]))
@@ -91,6 +96,41 @@ function App(): React.JSX.Element {
   const addRegionAt = (start: number, end: number): void =>
     setRegions((rs) => [...rs, { id: crypto.randomUUID(), name: '', start, end }])
 
+  const hasWork = regions.length > 0 || takes.length > 0 || instTake !== null
+
+  // 프로젝트 저장 — 구간/설정/트랙 경로를 .tslicer로. 경로 없는 트랙은 제외(경고).
+  const saveProject = async (): Promise<void> => {
+    const { json, skipped } = buildProjectJSON(config, regions, instTake, takes)
+    const path = await window.api.saveProject(json)
+    setLoadError(
+      path && skipped.length > 0
+        ? `저장됨 — 경로 없는 트랙 ${skipped.length}개 제외: ${skipped.join(', ')}`
+        : null
+    )
+  }
+
+  // 프로젝트 열기 — 구간/설정 복원 + 경로에서 트랙 재로드. 없는 파일은 경고.
+  const openProject = async (): Promise<void> => {
+    if (busy) return
+    const r = await window.api.openProject()
+    if (!r) return
+    setBusy(true)
+    try {
+      const p = parseProject(r.json)
+      const { inst, takes: loaded, missing } = await loadProjectAudio(p)
+      pb.stop()
+      setRegions(p.regions)
+      setConfig(p.config)
+      setInstTake(inst)
+      setTakes(loaded)
+      setLoadError(missing.length > 0 ? `불러오지 못한 트랙(이동/삭제): ${missing.join(', ')}` : null)
+    } catch (e) {
+      setLoadError(`프로젝트 열기 실패: ${(e as Error).message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // 스페이스바 = 인스트 재생/일시정지 (입력칸 포커스 중엔 무시).
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -106,7 +146,21 @@ function App(): React.JSX.Element {
 
   return (
     <div className="app">
-      <Logo />
+      <div className="app__top">
+        <Logo />
+        <div className="app__actions">
+          <button className="app__btn" onClick={openProject} disabled={busy}>
+            {busy ? 'Opening…' : 'Open'}
+          </button>
+          <button
+            className="app__btn app__btn--primary"
+            onClick={saveProject}
+            disabled={!hasWork || busy}
+          >
+            Save
+          </button>
+        </div>
+      </div>
       <TakeUpload onFiles={addTakes} onInstFiles={addInst} error={loadError} progress={progress} />
       <RegionForm
         regions={regions}
