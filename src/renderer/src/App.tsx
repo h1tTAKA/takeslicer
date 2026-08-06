@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Logo from './components/Logo'
+import CloseConfirmModal from './components/CloseConfirmModal'
 import RegionForm from './components/RegionForm'
 import TakeUpload from './components/TakeUpload'
 import WaveformView from './components/WaveformView'
@@ -9,6 +10,21 @@ import { Region, TakeFile, RenderConfig } from './types'
 import { decodeWavFile, isWavFile } from './audio/decode'
 import { buildProjectJSON, parseProject, loadProjectAudio, MissingRef } from './project'
 import { usePlayback } from './hooks/usePlayback'
+
+// 저장 대상 상태의 서명(변경 감지용). 값 비교라 StrictMode 이중 effect에도 오탐 없음.
+function stateSig(
+  regions: Region[],
+  config: RenderConfig,
+  instTake: TakeFile | null,
+  takes: TakeFile[]
+): string {
+  return JSON.stringify({
+    config,
+    regions,
+    inst: instTake?.path ?? instTake?.name ?? null,
+    takes: takes.map((t) => t.path ?? t.name)
+  })
+}
 
 function App(): React.JSX.Element {
   // 구간 목록 = App이 소유(상태 끌어올리기). 다음 이슈(파형/렌더)에서도 이 목록을 공유한다.
@@ -24,6 +40,9 @@ function App(): React.JSX.Element {
   const [busy, setBusy] = useState(false) // 프로젝트 로딩 중(중복 열기/저장 방지)
   const [missing, setMissing] = useState<MissingRef[]>([]) // 로드 시 경로 못 찾은 트랙(모달)
   const [modalError, setModalError] = useState<string | null>(null) // 재연결 에러(모달 안에 표시)
+  const [dirty, setDirty] = useState(false) // 마지막 저장/열기 이후 변경됨
+  const [confirmClose, setConfirmClose] = useState(false) // 닫기 확인 모달
+  const cleanSigRef = useRef<string | null>(null) // 마지막 clean 시점의 상태 서명
   const pb = usePlayback()
 
   const addInst = async (files: File[]): Promise<void> => {
@@ -102,7 +121,7 @@ function App(): React.JSX.Element {
   const hasWork = regions.length > 0 || takes.length > 0 || instTake !== null
 
   // 프로젝트 저장 — 구간/설정/트랙 경로를 .tslicer로. 경로 없는 트랙은 제외(경고).
-  const saveProject = async (): Promise<void> => {
+  const saveProject = async (): Promise<boolean> => {
     const { json, skipped } = buildProjectJSON(config, regions, instTake, takes)
     const path = await window.api.saveProject(json)
     setLoadError(
@@ -110,6 +129,11 @@ function App(): React.JSX.Element {
         ? `저장됨 — 경로 없는 트랙 ${skipped.length}개 제외: ${skipped.join(', ')}`
         : null
     )
+    if (path) {
+      cleanSigRef.current = stateSig(regions, config, instTake, takes) // 지금 상태가 clean 기준
+      setDirty(false)
+    }
+    return !!path
   }
 
   // 프로젝트 열기 — 구간/설정 복원 + 경로에서 트랙 재로드. 없는 파일은 경고.
@@ -129,6 +153,9 @@ function App(): React.JSX.Element {
       setLoadError(null)
       setMissing(missing) // 못 찾은 트랙 있으면 모달로(없으면 빈 배열=모달 안 뜸)
       setModalError(null)
+      // 방금 연 상태를 clean 기준으로(뒤이어 실행될 dirty effect가 같은 서명 → dirty 안 됨)
+      cleanSigRef.current = stateSig(p.regions, p.config, inst, loaded)
+      setDirty(false)
     } catch (e) {
       setLoadError(`프로젝트 열기 실패: ${(e as Error).message}`)
     } finally {
@@ -168,6 +195,28 @@ function App(): React.JSX.Element {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [instTake, pb])
+
+  // 변경 감지 → dirty. clean 서명과 값 비교(초기 마운트/열기 서명이 clean이면 dirty 안 됨).
+  useEffect(() => {
+    const sig = stateSig(regions, config, instTake, takes)
+    if (cleanSigRef.current === null) cleanSigRef.current = sig // 최초 = clean 기준
+    setDirty(sig !== cleanSigRef.current)
+  }, [regions, takes, instTake, config])
+
+  // dirty를 main에 알림(닫기 가로채기 판단).
+  useEffect(() => {
+    window.api.setDirty(dirty)
+  }, [dirty])
+
+  // main이 닫기를 가로채 확인 요청 → 모달.
+  useEffect(() => {
+    window.api.onConfirmClose(() => setConfirmClose(true))
+  }, [])
+
+  // 저장하고 닫기 — 저장되면 종료(저장 다이얼로그 취소면 모달 유지).
+  const onSaveAndClose = async (): Promise<void> => {
+    if (await saveProject()) window.api.quit()
+  }
 
   return (
     <div className="app">
@@ -221,6 +270,13 @@ function App(): React.JSX.Element {
             setMissing([])
             setModalError(null)
           }}
+        />
+      )}
+      {confirmClose && (
+        <CloseConfirmModal
+          onSave={onSaveAndClose}
+          onDiscard={() => window.api.quit()}
+          onCancel={() => setConfirmClose(false)}
         />
       )}
     </div>

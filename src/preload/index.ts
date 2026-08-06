@@ -18,7 +18,16 @@ const api = {
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
   saveProject: (json: string): Promise<string | null> => ipcRenderer.invoke('save-project', json),
   openProject: (): Promise<{ path: string; json: string } | null> => ipcRenderer.invoke('open-project'),
-  readFile: (p: string): Promise<Uint8Array | null> => ipcRenderer.invoke('read-file', p)
+  readFile: (p: string): Promise<Uint8Array | null> => ipcRenderer.invoke('read-file', p),
+  // 미저장 변경 여부를 main에 알림(닫기 가로채기 판단).
+  setDirty: (v: boolean): void => ipcRenderer.send('set-dirty', v),
+  // main이 닫기를 가로채 확인 요청할 때 콜백(중복 등록 방지 위해 기존 리스너 제거).
+  onConfirmClose: (cb: () => void): void => {
+    ipcRenderer.removeAllListeners('confirm-close')
+    ipcRenderer.on('confirm-close', () => cb())
+  },
+  // 확인 후 실제 종료.
+  quit: (): void => ipcRenderer.send('do-quit')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

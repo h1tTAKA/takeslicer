@@ -15,6 +15,9 @@ export interface TakeslicerAPI {
   saveProject(json: string): Promise<string | null>
   openProject(): Promise<{ path: string; json: string } | null>
   readFile(path: string): Promise<Uint8Array | null>
+  setDirty(dirty: boolean): void
+  onConfirmClose(cb: () => void): void
+  quit(): void
 }
 
 declare global {

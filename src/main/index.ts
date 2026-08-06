@@ -4,6 +4,11 @@ import { mkdir, writeFile, readFile, stat } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
+// 미저장 변경 여부(렌더러가 push) + 종료 확인 통과 플래그 + 창 참조(닫기 확인 모달용).
+let isDirty = false
+let forceQuit = false
+let mainWindow: BrowserWindow | null = null
+
 // 파일/폴더명 금지문자 치환 (renderer에서도 하지만 방어적으로 main에서도).
 const BAD = /[/\\:*?"<>|]/g
 const clean = (s: string): string => {
@@ -76,8 +81,12 @@ function registerRenderIpc(): void {
       filters: [{ name: 'takeSlicer project', extensions: ['tslicer'] }]
     })
     if (r.canceled || !r.filePath) return null
-    await writeFile(r.filePath, json, 'utf8')
-    return r.filePath
+    try {
+      await writeFile(r.filePath, json, 'utf8')
+      return r.filePath
+    } catch {
+      return null // 쓰기 실패가 렌더러로 reject 안 나가게(닫기 모달 스턱 방지)
+    }
   })
 
   // 프로젝트 열기 — 파일 선택 후 JSON 문자열 반환.
@@ -106,11 +115,20 @@ function registerRenderIpc(): void {
       return null
     }
   })
+
+  // 미저장 변경 여부(렌더러 push) + 종료 요청(닫기 확인 모달 통과 후).
+  ipcMain.on('set-dirty', (_e, v: boolean) => {
+    isDirty = !!v
+  })
+  ipcMain.on('do-quit', () => {
+    forceQuit = true
+    app.quit() // before-quit·close 재가로채기는 forceQuit로 통과
+  })
 }
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -124,7 +142,17 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow?.show()
+  })
+
+  forceQuit = false // 새 창(재활성화 등)이면 종료 플래그 리셋
+
+  // 미저장 변경 있으면 닫기 가로채기 → 렌더러에 확인 모달 요청.
+  mainWindow.on('close', (e) => {
+    if (isDirty && !forceQuit && mainWindow && !mainWindow.isDestroyed()) {
+      e.preventDefault()
+      mainWindow.webContents.send('confirm-close')
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -158,6 +186,14 @@ app.whenReady().then(() => {
   })
 
   registerRenderIpc()
+
+  // Cmd+Q(앱 종료) 시에도 미저장이면 확인(창 close만으론 quit 경로를 못 잡는 경우 대비).
+  app.on('before-quit', (e) => {
+    if (isDirty && !forceQuit && mainWindow && !mainWindow.isDestroyed()) {
+      e.preventDefault()
+      mainWindow.webContents.send('confirm-close')
+    }
+  })
 
   createWindow()
 
