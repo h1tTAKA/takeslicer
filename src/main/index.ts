@@ -4,6 +4,11 @@ import { mkdir, writeFile, readFile, stat } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
+// 미저장 변경 여부(렌더러가 push) + 종료 확인 통과 플래그 + 창 참조(닫기 확인 모달용).
+let isDirty = false
+let forceQuit = false
+let mainWindow: BrowserWindow | null = null
+
 // 파일/폴더명 금지문자 치환 (renderer에서도 하지만 방어적으로 main에서도).
 const BAD = /[/\\:*?"<>|]/g
 const clean = (s: string): string => {
@@ -106,11 +111,20 @@ function registerRenderIpc(): void {
       return null
     }
   })
+
+  // 미저장 변경 여부(렌더러 push) + 종료 요청(닫기 확인 모달 통과 후).
+  ipcMain.on('set-dirty', (_e, v: boolean) => {
+    isDirty = !!v
+  })
+  ipcMain.on('do-quit', () => {
+    forceQuit = true
+    mainWindow?.close()
+  })
 }
 
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -124,7 +138,15 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow?.show()
+  })
+
+  // 미저장 변경 있으면 닫기 가로채기 → 렌더러에 확인 모달 요청.
+  mainWindow.on('close', (e) => {
+    if (isDirty && !forceQuit && mainWindow && !mainWindow.isDestroyed()) {
+      e.preventDefault()
+      mainWindow.webContents.send('confirm-close')
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
