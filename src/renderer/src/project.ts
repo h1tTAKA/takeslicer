@@ -9,6 +9,13 @@ interface Ref {
   name: string // 표시/네이밍용 이름
 }
 
+// 로드 실패(경로 못 찾음) 트랙 — 모달에서 재연결하려고 역할/이름/원경로 보존.
+export interface MissingRef {
+  role: 'inst' | 'take'
+  name: string
+  path: string // 원래(못 찾은) 경로 — 표시용
+}
+
 export interface ProjectFile {
   v: number
   savedAt: string
@@ -76,26 +83,26 @@ export function parseProject(json: string): ProjectFile {
 // 프로젝트의 경로들에서 오디오 재로드. 못 읽거나 디코드 실패한 트랙 이름은 missing으로.
 export async function loadProjectAudio(
   p: ProjectFile
-): Promise<{ inst: TakeFile | null; takes: TakeFile[]; missing: string[] }> {
-  const missing: string[] = []
-  const load = async (r: Ref): Promise<TakeFile | null> => {
+): Promise<{ inst: TakeFile | null; takes: TakeFile[]; missing: MissingRef[] }> {
+  const missing: MissingRef[] = []
+  const load = async (r: Ref, role: 'inst' | 'take'): Promise<TakeFile | null> => {
     const bytes = await window.api.readFile(r.path)
     if (!bytes) {
-      missing.push(r.name)
+      missing.push({ role, name: r.name, path: r.path })
       return null
     }
     try {
       // IPC로 온 Uint8Array는 offset 0의 새 ArrayBuffer → 캐스트 안전.
       return await decodeWavBytes(bytes.buffer as ArrayBuffer, r.name, r.path)
     } catch {
-      missing.push(r.name)
+      missing.push({ role, name: r.name, path: r.path })
       return null
     }
   }
-  const inst = p.inst ? await load(p.inst) : null
+  const inst = p.inst ? await load(p.inst, 'inst') : null
   const takes: TakeFile[] = []
   for (const r of p.takes) {
-    const t = await load(r)
+    const t = await load(r, 'take')
     if (t) takes.push(t)
   }
   return { inst, takes, missing }
