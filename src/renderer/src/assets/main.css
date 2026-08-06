@@ -861,6 +861,11 @@ body {
   border-color: var(--accent);
   color: var(--accent);
 }
+.modal__error {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--danger);
+}
 .modal__actions {
   display: flex;
   justify-content: flex-end;

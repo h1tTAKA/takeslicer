@@ -23,6 +23,7 @@ function App(): React.JSX.Element {
   const [instTake, setInstTake] = useState<TakeFile | null>(null)
   const [busy, setBusy] = useState(false) // 프로젝트 로딩 중(중복 열기/저장 방지)
   const [missing, setMissing] = useState<MissingRef[]>([]) // 로드 시 경로 못 찾은 트랙(모달)
+  const [modalError, setModalError] = useState<string | null>(null) // 재연결 에러(모달 안에 표시)
   const pb = usePlayback()
 
   const addInst = async (files: File[]): Promise<void> => {
@@ -127,6 +128,7 @@ function App(): React.JSX.Element {
       setTakes(loaded)
       setLoadError(null)
       setMissing(missing) // 못 찾은 트랙 있으면 모달로(없으면 빈 배열=모달 안 뜸)
+      setModalError(null)
     } catch (e) {
       setLoadError(`프로젝트 열기 실패: ${(e as Error).message}`)
     } finally {
@@ -135,9 +137,10 @@ function App(): React.JSX.Element {
   }
 
   // 모달에서 못 찾은 트랙에 파일 재지정 → 그 슬롯(inst/take)에 연결. 원래 이름 유지.
+  // 에러는 모달 안(modalError)에 표시(모달 뒤 배너는 안 보이므로).
   const reconnectTrack = async (ref: MissingRef, file: File): Promise<void> => {
     if (!isWavFile(file)) {
-      setLoadError('WAV 파일이 아닙니다')
+      setModalError(`${file.name}: WAV 파일이 아닙니다`)
       return
     }
     try {
@@ -145,10 +148,11 @@ function App(): React.JSX.Element {
       t.name = ref.name // 슬라이스 네이밍/구간 계획 일관 위해 원래 이름 유지
       t.path = window.api.getPathForFile(file) || undefined
       if (ref.role === 'inst') setInstTake(t)
-      else setTakes((ts) => (ts.some((x) => x.name === t.name) ? ts : [...ts, t]))
+      else setTakes((ts) => [...ts, t]) // 재연결은 항상 추가(무음 드롭 방지)
       setMissing((m) => m.filter((x) => x !== ref))
+      setModalError(null)
     } catch (e) {
-      setLoadError(`연결 실패: ${(e as Error).message}`)
+      setModalError(`${ref.name} 연결 실패: ${(e as Error).message}`)
     }
   }
 
@@ -211,8 +215,12 @@ function App(): React.JSX.Element {
       {missing.length > 0 && (
         <MissingTracksModal
           missing={missing}
+          error={modalError}
           onReconnect={reconnectTrack}
-          onClose={() => setMissing([])}
+          onClose={() => {
+            setMissing([])
+            setModalError(null)
+          }}
         />
       )}
     </div>
