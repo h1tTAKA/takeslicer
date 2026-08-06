@@ -1,6 +1,6 @@
 {
   "name": "takeslicer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "보컬 콤핑 전처리: 구간별 자동 슬라이스 + 폴더 정리 렌더",
   "main": "./out/main/index.js",
   "author": "h1tTAKA",

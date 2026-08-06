@@ -4,9 +4,10 @@ import RegionForm from './components/RegionForm'
 import TakeUpload from './components/TakeUpload'
 import WaveformView from './components/WaveformView'
 import RenderPanel from './components/RenderPanel'
+import MissingTracksModal from './components/MissingTracksModal'
 import { Region, TakeFile, RenderConfig } from './types'
 import { decodeWavFile, isWavFile } from './audio/decode'
-import { buildProjectJSON, parseProject, loadProjectAudio } from './project'
+import { buildProjectJSON, parseProject, loadProjectAudio, MissingRef } from './project'
 import { usePlayback } from './hooks/usePlayback'
 
 function App(): React.JSX.Element {
@@ -21,6 +22,7 @@ function App(): React.JSX.Element {
   // 인스트(반주) 레퍼런스 트랙 — takes(슬라이스 대상)와 분리. 재생·구간 잡기용.
   const [instTake, setInstTake] = useState<TakeFile | null>(null)
   const [busy, setBusy] = useState(false) // 프로젝트 로딩 중(중복 열기/저장 방지)
+  const [missing, setMissing] = useState<MissingRef[]>([]) // 로드 시 경로 못 찾은 트랙(모달)
   const pb = usePlayback()
 
   const addInst = async (files: File[]): Promise<void> => {
@@ -123,11 +125,30 @@ function App(): React.JSX.Element {
       setConfig(p.config)
       setInstTake(inst)
       setTakes(loaded)
-      setLoadError(missing.length > 0 ? `불러오지 못한 트랙(이동/삭제): ${missing.join(', ')}` : null)
+      setLoadError(null)
+      setMissing(missing) // 못 찾은 트랙 있으면 모달로(없으면 빈 배열=모달 안 뜸)
     } catch (e) {
       setLoadError(`프로젝트 열기 실패: ${(e as Error).message}`)
     } finally {
       setBusy(false)
+    }
+  }
+
+  // 모달에서 못 찾은 트랙에 파일 재지정 → 그 슬롯(inst/take)에 연결. 원래 이름 유지.
+  const reconnectTrack = async (ref: MissingRef, file: File): Promise<void> => {
+    if (!isWavFile(file)) {
+      setLoadError('WAV 파일이 아닙니다')
+      return
+    }
+    try {
+      const t = await decodeWavFile(file)
+      t.name = ref.name // 슬라이스 네이밍/구간 계획 일관 위해 원래 이름 유지
+      t.path = window.api.getPathForFile(file) || undefined
+      if (ref.role === 'inst') setInstTake(t)
+      else setTakes((ts) => (ts.some((x) => x.name === t.name) ? ts : [...ts, t]))
+      setMissing((m) => m.filter((x) => x !== ref))
+    } catch (e) {
+      setLoadError(`연결 실패: ${(e as Error).message}`)
     }
   }
 
@@ -187,6 +208,13 @@ function App(): React.JSX.Element {
         config={config}
       />
       <RenderPanel regions={regions} takes={takes} config={config} onConfigChange={setConfig} />
+      {missing.length > 0 && (
+        <MissingTracksModal
+          missing={missing}
+          onReconnect={reconnectTrack}
+          onClose={() => setMissing([])}
+        />
+      )}
     </div>
   )
 }
